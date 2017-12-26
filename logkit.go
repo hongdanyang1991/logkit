@@ -21,10 +21,17 @@ import (
 	"github.com/qiniu/logkit/utils"
 
 	"github.com/labstack/echo"
+	"net/url"
+	"io/ioutil"
+	"net"
 )
 
 //Config of logkit
 type Config struct {
+	BindIP           string   `json:"bind_ip"`
+	BindPort         string   `json:"bind_port"`
+	Tenant           string   `json:"tenant"`
+	BlogicUrl        string   `json:"blogic_url"`
 	MaxProcs         int      `json:"max_procs"`
 	DebugLevel       int      `json:"debug_level"`
 	ProfileHost      string   `json:"profile_host"`
@@ -38,6 +45,8 @@ type Config struct {
 	StaticRootPath   string   `json:"static_root_path"`
 	mgr.ManagerConfig
 }
+
+var DEFAULT_PORT = "3000"
 
 var conf Config
 
@@ -212,6 +221,48 @@ func usageExit(rc int) {
 	os.Exit(rc)
 }
 
+func sendBlogic(){
+	blogicUrl := conf.BlogicUrl
+	if blogicUrl ==""{
+		log.Errorf("获取blogic访问地址失败,无法将服务自动注册到blogic中")
+		return
+	}
+	tenant := conf.Tenant
+	bindIP := conf.BindIP
+	bindPort := conf.BindPort
+	if tenant == "" {
+		tenant = "admin"
+		log.Infof("获取租户信息失败，使用默认租户%v",tenant)
+	}
+	if bindIP ==""{
+		addrs, _ := net.InterfaceAddrs()
+		for _, address := range addrs {
+			// 检查ip地址判断是否回环地址
+			if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback(){
+				if ipnet.IP.To4() != nil {
+					bindIP = ipnet.IP.String()
+				}
+			}
+		}
+		log.Infof("获取客户端IP地址失败，使用默认本机IP:%v",bindIP)
+	}
+	if bindPort ==""{
+		bindPort = DEFAULT_PORT
+		log.Infof("获取客户端端口信息失败，使用默认%v端口",bindPort)
+	}
+	registerUrl := fmt.Sprintf("http://%v/data/logkit/collector/register", blogicUrl)
+	//网络请求可以多重试 避免一次请求出错
+	response, err := http.PostForm(registerUrl,url.Values{"ip": {conf.BindIP}, "port": {conf.BindPort},"tenant": {conf.Tenant}})
+	//请求完了关闭回复主体
+	defer response.Body.Close()
+	body,err := ioutil.ReadAll(response.Body)
+	if err!=nil{
+		log.Errorf("将本机logkit服务注册到blogic失败，错误信息：%v",err)
+	}else{
+		log.Infof("将本机logkit服务注册到blogic成功，返回信息：%v",string(body))
+	}
+}
+
 //！！！注意： 自动生成 grok pattern代码，下述注释请勿删除！！！
 //go:generate go run generators/grok_pattern_generater.go
 func main() {
@@ -294,6 +345,9 @@ func main() {
 	if err = rs.Register(); err != nil {
 		log.Fatalf("register master error %v", err)
 	}
+
+	sendBlogic()
+
 	utils.WaitForInterrupt(func() {
 		rs.Stop()
 		if conf.CleanSelfLog {
