@@ -237,7 +237,7 @@ func sendBlogic(tenant string,bindIP string,bindPort string){
 		for _, address := range addrs {
 			// 检查ip地址判断是否回环地址
 			if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback(){
-				if ipnet.IP.To4() != nil {
+				if ipnet.IP.To4()!= nil {
 					bindIP = ipnet.IP.String()
 				}
 			}
@@ -329,9 +329,15 @@ func main() {
 	if conf.CleanSelfLog {
 		go loopCleanLogkitLog(conf.CleanSelfDir, conf.CleanSelfPattern, conf.CleanSelfLogCnt, 10*time.Minute, stopClean)
 	}
-	if len(conf.BindHost) > 0 {
+	//if len(conf.BindHost) > 0 {
+	//	m.BindHost = conf.BindIP+":"+conf.BindPort
+	//}
+	if len(conf.BindPort) == 0 {
+		m.BindHost = conf.BindIP+":"+DEFAULT_PORT
+	}else{
 		m.BindHost = conf.BindIP+":"+conf.BindPort
 	}
+
 	e := echo.New()
 	e.Static("/", conf.StaticRootPath)
 
