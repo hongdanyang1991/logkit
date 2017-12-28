@@ -252,14 +252,14 @@ func sendBlogic(){
 	}
 	registerUrl := fmt.Sprintf("http://%v/data/logkit/collector/register", blogicUrl)
 	//网络请求可以多重试 避免一次请求出错
-	response, err := http.PostForm(registerUrl,url.Values{"ip": {conf.BindIP}, "port": {conf.BindPort},"tenant": {conf.Tenant}})
+	response, err := http.PostForm(registerUrl,url.Values{"ip": {bindIP}, "port": {bindPort},"tenant": {tenant}})
 	//请求完了关闭回复主体
 	defer response.Body.Close()
 	body,err := ioutil.ReadAll(response.Body)
 	if err!=nil{
-		log.Errorf("将本机logkit服务注册到blogic失败，错误信息：%v",err)
+		log.Errorf("发送到blogic注册请求失败，错误信息：%v",err)
 	}else{
-		log.Infof("将本机logkit服务注册到blogic成功，返回信息：%v",string(body))
+		log.Infof("发送到blogic注册请求成功，返回信息：%v",string(body))
 	}
 }
 
@@ -286,6 +286,7 @@ func main() {
 	if err := config.LoadEx(&conf, *confName); err != nil {
 		log.Fatal("config.Load failed:", err)
 	}
+
 	if conf.TimeLayouts != nil {
 		times.AddLayout(conf.TimeLayouts)
 	}
@@ -329,7 +330,7 @@ func main() {
 		go loopCleanLogkitLog(conf.CleanSelfDir, conf.CleanSelfPattern, conf.CleanSelfLogCnt, 10*time.Minute, stopClean)
 	}
 	if len(conf.BindHost) > 0 {
-		m.BindHost = conf.BindHost
+		m.BindHost = conf.BindIP+":"+conf.BindPort
 	}
 	e := echo.New()
 	e.Static("/", conf.StaticRootPath)
