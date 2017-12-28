@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"io/ioutil"
 	"net"
+	"strings"
 )
 
 //Config of logkit
@@ -221,18 +222,15 @@ func usageExit(rc int) {
 	os.Exit(rc)
 }
 
-func sendBlogic(){
+func sendBlogic(tenant string,bindIP string,bindPort string){
 	blogicUrl := conf.BlogicUrl
 	if blogicUrl ==""{
 		log.Errorf("获取blogic访问地址失败,无法将服务自动注册到blogic中")
 		return
 	}
-	tenant := conf.Tenant
-	bindIP := conf.BindIP
-	bindPort := conf.BindPort
 	if tenant == "" {
 		tenant = "admin"
-		log.Infof("获取租户信息失败，使用默认租户%v",tenant)
+		log.Infof("获取配置文件无效tenant项，使用默认租户%v",tenant)
 	}
 	if bindIP ==""{
 		addrs, _ := net.InterfaceAddrs()
@@ -244,22 +242,23 @@ func sendBlogic(){
 				}
 			}
 		}
-		log.Infof("获取客户端IP地址失败，使用默认本机IP:%v",bindIP)
+		log.Infof("获取配置文件无效bind_ip项，使用默认本机IP:%v",bindIP)
 	}
 	if bindPort ==""{
 		bindPort = DEFAULT_PORT
-		log.Infof("获取客户端端口信息失败，使用默认%v端口",bindPort)
+		log.Infof("获取配置文件无效bind_port项，使用默认%v端口",bindPort)
 	}
 	registerUrl := fmt.Sprintf("http://%v/data/logkit/collector/register", blogicUrl)
 	//网络请求可以多重试 避免一次请求出错
 	response, err := http.PostForm(registerUrl,url.Values{"ip": {bindIP}, "port": {bindPort},"tenant": {tenant}})
-	//请求完了关闭回复主体
 
 	if err!=nil{
 		log.Errorf("注册请求发送失败，错误信息：%v",err)
 	}else{
+		//请求完了关闭回复主体
 		defer response.Body.Close()
 		body,_ := ioutil.ReadAll(response.Body)
+		log.Infof("tenant：%v；bindIP：%v；bindPort：%v",tenant,bindIP,bindPort)
 		log.Infof("注册请求发送成功，返回信息：%v",string(body))
 	}
 }
@@ -338,6 +337,9 @@ func main() {
 
 	// start rest service
 	rs := mgr.NewRestService(m, e)
+
+	rs.PostParserCheck()
+
 	if conf.ProfileHost != "" {
 		log.Printf("profile_host was open at %v", conf.ProfileHost)
 		go func() {
@@ -348,7 +350,11 @@ func main() {
 		log.Fatalf("register master error %v", err)
 	}
 
-	sendBlogic()
+	tenant := conf.Tenant
+	bindIP := conf.BindIP
+	bindPort := strings.Split(rs.Address(),":")[1]
+	sendBlogic(tenant,bindIP,bindPort)
+
 
 	utils.WaitForInterrupt(func() {
 		rs.Stop()

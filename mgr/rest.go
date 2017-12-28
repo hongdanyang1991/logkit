@@ -223,6 +223,11 @@ func RespSuccess(c echo.Context, data interface{}) error {
 	return c.JSON(http.StatusOK, respData)
 }
 
+//get address
+func (rs *RestService) Address() string{
+	return rs.address
+}
+
 // get /logkit/status
 func (rs *RestService) Status() echo.HandlerFunc {
 	return func(c echo.Context) error {
