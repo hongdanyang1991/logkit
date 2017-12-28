@@ -257,9 +257,9 @@ func sendBlogic(){
 	defer response.Body.Close()
 	body,err := ioutil.ReadAll(response.Body)
 	if err!=nil{
-		log.Errorf("发送到blogic注册请求失败，错误信息：%v",err)
+		log.Errorf("注册请求发送失败，错误信息：%v",err)
 	}else{
-		log.Infof("发送到blogic注册请求成功，返回信息：%v",string(body))
+		log.Infof("注册请求发送成功，返回信息：%v",string(body))
 	}
 }
 
