@@ -254,11 +254,12 @@ func sendBlogic(){
 	//网络请求可以多重试 避免一次请求出错
 	response, err := http.PostForm(registerUrl,url.Values{"ip": {bindIP}, "port": {bindPort},"tenant": {tenant}})
 	//请求完了关闭回复主体
-	defer response.Body.Close()
-	body,err := ioutil.ReadAll(response.Body)
+
 	if err!=nil{
 		log.Errorf("注册请求发送失败，错误信息：%v",err)
 	}else{
+		defer response.Body.Close()
+		body,_ := ioutil.ReadAll(response.Body)
 		log.Infof("注册请求发送成功，返回信息：%v",string(body))
 	}
 }
