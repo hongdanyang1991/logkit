@@ -21,9 +21,9 @@ import (
 	"github.com/qiniu/logkit/utils"
 
 	"github.com/labstack/echo"
-	"net/url"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"strings"
 )
 
@@ -72,6 +72,7 @@ The commands & flags are:
   -upgrade           check and upgrade version.
 
   -f <file>          configuration file to load
+  -l <logPath>		 Log output path
 
 Examples:
 
@@ -83,12 +84,16 @@ Examples:
 
   # checking and upgrade version
   logkit -upgrade
+
+  #start logkit and set log output to console
+  logkit -l console
 `
 
 var (
 	fversion = flag.Bool("v", false, "print the version to stdout")
 	upgrade  = flag.Bool("upgrade", false, "check and upgrade version")
 	confName = flag.String("f", "logkit.conf", "configuration file to load")
+	logPath  = flag.String("l", "", "Log output path")
 )
 
 func getValidPath(confPaths []string) (paths []string) {
@@ -222,44 +227,44 @@ func usageExit(rc int) {
 	os.Exit(rc)
 }
 
-func sendBlogic(tenant string,bindIP string,bindPort string){
+func sendBlogic(tenant string, bindIP string, bindPort string) {
 	blogicUrl := conf.BlogicUrl
-	if blogicUrl ==""{
+	if blogicUrl == "" {
 		log.Errorf("获取blogic访问地址失败,无法将服务自动注册到blogic中")
 		return
 	}
 	if tenant == "" {
 		tenant = "admin"
-		log.Infof("获取配置文件无效tenant项，使用默认租户%v",tenant)
+		log.Infof("获取配置文件无效tenant项，使用默认租户%v", tenant)
 	}
-	if bindIP ==""{
+	if bindIP == "" {
 		addrs, _ := net.InterfaceAddrs()
 		for _, address := range addrs {
 			// 检查ip地址判断是否回环地址
-			if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback(){
-				if ipnet.IP.To4()!= nil {
+			if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+				if ipnet.IP.To4() != nil {
 					bindIP = ipnet.IP.String()
 				}
 			}
 		}
-		log.Infof("获取配置文件无效bind_ip项，使用默认本机IP:%v",bindIP)
+		log.Infof("获取配置文件无效bind_ip项，使用默认本机IP:%v", bindIP)
 	}
-	if bindPort ==""{
+	if bindPort == "" {
 		bindPort = DEFAULT_PORT
-		log.Infof("获取配置文件无效bind_port项，使用默认%v端口",bindPort)
+		log.Infof("获取配置文件无效bind_port项，使用默认%v端口", bindPort)
 	}
 	registerUrl := fmt.Sprintf("http://%v/data/logkit/collector/register", blogicUrl)
 	//网络请求可以多重试 避免一次请求出错
-	response, err := http.PostForm(registerUrl,url.Values{"ip": {bindIP}, "port": {bindPort},"tenant": {tenant}})
+	response, err := http.PostForm(registerUrl, url.Values{"ip": {bindIP}, "port": {bindPort}, "tenant": {tenant}})
 
-	if err!=nil{
-		log.Errorf("注册请求发送失败，错误信息：%v",err)
-	}else{
+	if err != nil {
+		log.Errorf("注册请求发送失败，错误信息：%v", err)
+	} else {
 		//请求完了关闭回复主体
 		defer response.Body.Close()
-		body,_ := ioutil.ReadAll(response.Body)
-		log.Infof("tenant：%v；bindIP：%v；bindPort：%v",tenant,bindIP,bindPort)
-		log.Infof("注册请求发送成功，返回信息：%v",string(body))
+		body, _ := ioutil.ReadAll(response.Body)
+		log.Infof("tenant：%v；bindIP：%v；bindPort：%v", tenant, bindIP, bindPort)
+		log.Infof("注册请求发送成功，返回信息：%v", string(body))
 	}
 }
 
@@ -296,8 +301,16 @@ func main() {
 	runtime.GOMAXPROCS(conf.MaxProcs)
 	log.SetOutputLevel(conf.DebugLevel)
 
+	//设置日志输出格式
+	log.SetFlags(83)
+
 	stopRotate := make(chan struct{}, 0)
 	defer close(stopRotate)
+	if *logPath == "console" {
+		conf.LogPath = ""
+	} else if *logPath != "" {
+		conf.LogPath = *logPath
+	}
 	if conf.LogPath != "" {
 		logdir, logpattern, err := utils.LogDirAndPattern(conf.LogPath)
 		if err != nil {
@@ -307,8 +320,10 @@ func main() {
 		conf.CleanSelfPattern = logpattern + "-*"
 		conf.CleanSelfDir = logdir
 	}
+	//睡眠
+	time.Sleep(3 * time.Duration(time.Second))
 
-	log.Infof("Welcome to use Logkit, Version: %v \n\nConfig: %#v", NextVersion, conf)
+	log.Infof("Welcome to use Logkit, Version: %v \nConfig: %#v", NextVersion, conf)
 	m, err := mgr.NewManager(conf.ManagerConfig)
 	if err != nil {
 		log.Fatalf("NewManager: %v", err)
@@ -333,9 +348,9 @@ func main() {
 	//	m.BindHost = conf.BindIP+":"+conf.BindPort
 	//}
 	if len(conf.BindPort) == 0 {
-		m.BindHost = conf.BindIP+":"+DEFAULT_PORT
-	}else{
-		m.BindHost = conf.BindIP+":"+conf.BindPort
+		m.BindHost = conf.BindIP + ":" + DEFAULT_PORT
+	} else {
+		m.BindHost = conf.BindIP + ":" + conf.BindPort
 	}
 
 	e := echo.New()
@@ -358,9 +373,8 @@ func main() {
 
 	tenant := conf.Tenant
 	bindIP := conf.BindIP
-	bindPort := strings.Split(rs.Address(),":")[1]
-	sendBlogic(tenant,bindIP,bindPort)
-
+	bindPort := strings.Split(rs.Address(), ":")[1]
+	sendBlogic(tenant, bindIP, bindPort)
 
 	utils.WaitForInterrupt(func() {
 		rs.Stop()

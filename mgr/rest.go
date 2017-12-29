@@ -224,7 +224,7 @@ func RespSuccess(c echo.Context, data interface{}) error {
 }
 
 //get address
-func (rs *RestService) Address() string{
+func (rs *RestService) Address() string {
 	return rs.address
 }
 

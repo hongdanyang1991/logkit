@@ -11,8 +11,8 @@ import (
 	"github.com/qiniu/logkit/transforms"
 	"github.com/qiniu/logkit/utils"
 
-	"github.com/robertkrimen/otto"
 	"github.com/qiniu/log"
+	"github.com/robertkrimen/otto"
 )
 
 type Script struct {
