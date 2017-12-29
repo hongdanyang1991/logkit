@@ -319,6 +319,8 @@ func main() {
 		go loopRotateLogs(filepath.Join(logdir, logpattern), defaultRotateSize, 10*time.Second, stopRotate)
 		conf.CleanSelfPattern = logpattern + "-*"
 		conf.CleanSelfDir = logdir
+	} else {
+		log.SetOutput(os.Stdout)
 	}
 	//睡眠
 	time.Sleep(3 * time.Duration(time.Second))

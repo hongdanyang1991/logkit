@@ -68,8 +68,7 @@ func New(out io.Writer, prefix string, flag int) *Logger {
 	return &Logger{out: out, prefix: prefix, Level: 1, flag: flag}
 }
 
-//var Std = New(os.Stderr, "", Ldefault)
-var Std = New(os.Stdout, "", Ldefault)
+var Std = New(os.Stderr, "", Ldefault)
 
 // Cheap integer to fixed-width decimal ASCII.  Give a negative width to avoid zero-padding.
 // Knows the buffer has capacity.
