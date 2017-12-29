@@ -24,7 +24,7 @@ import (
 	"github.com/qiniu/logkit/utils"
 )
 
-var DEFAULT_PORT = 3000
+var DEFAULT_START = 0
 
 const (
 	StatsShell = "stats"
@@ -127,30 +127,30 @@ func NewRestService(mgr *Manager, router *echo.Echo) *RestService {
 	router.POST(PREFIX+"/cluster/configs/:name/reset", rs.PostClusterConfigReset())
 
 	var (
-		port       = DEFAULT_PORT
 		address    string
 		listener   net.Listener
 		err        error
 		httpschema = "http://"
+		start	   = DEFAULT_START
+
 	)
 
 	for {
-		if port > 10000 {
+
+		if start >100 {
 			log.Fatal("bind port failed too many times, exit...")
 		}
-		address = ":" + strconv.Itoa(port)
 		if mgr.BindHost != "" {
 			address, httpschema = utils.RemoveHttpProtocal(mgr.BindHost)
 		}
 		listener, err = httpserve(address, router)
 		if err != nil {
 			err = fmt.Errorf("bind address %v for RestService error %v", address, err)
-			if mgr.BindHost != "" {
-				log.Fatal(err)
-			} else {
-				log.Warnf("%v, try next port", err)
-			}
-			port++
+			bindPort,_ := strconv.Atoi(strings.Split(mgr.BindHost,":")[1])
+			bindPort ++
+			mgr.BindHost = strings.Split(mgr.BindHost,":")[0]+":"+strconv.Itoa(bindPort)
+			log.Warnf("%v, try next port", err)
+			start++
 			continue
 		}
 		break
