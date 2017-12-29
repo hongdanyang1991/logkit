@@ -85,8 +85,8 @@ Examples:
   # checking and upgrade version
   logkit -upgrade
 
-  #start logkit and set log output to console
-  logkit -l console
+  #start logkit and set log output to standard output
+  logkit -l std
 `
 
 var (
@@ -306,7 +306,7 @@ func main() {
 
 	stopRotate := make(chan struct{}, 0)
 	defer close(stopRotate)
-	if *logPath == "console" {
+	if *logPath == "std" {
 		conf.LogPath = ""
 	} else if *logPath != "" {
 		conf.LogPath = *logPath
