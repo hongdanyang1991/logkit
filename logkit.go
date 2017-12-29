@@ -47,7 +47,7 @@ type Config struct {
 	mgr.ManagerConfig
 }
 
-var DEFAULT_PORT = "3000"
+var DEFAULT_PORT = "8100"
 
 var conf Config
 
