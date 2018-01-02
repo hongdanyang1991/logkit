@@ -475,6 +475,7 @@ func (r *LogExportRunner) Run() {
 			err = se.ErrorDetail
 			r.rs.ParserStats.Errors += se.Errors
 			r.rs.ParserStats.Success += se.Success
+			r.rs.ParserStats.LastError = err.Error()
 		} else if err != nil {
 			errorCnt = 1
 			r.rs.ParserStats.Errors++
