@@ -131,13 +131,12 @@ func NewRestService(mgr *Manager, router *echo.Echo) *RestService {
 		listener   net.Listener
 		err        error
 		httpschema = "http://"
-		start	   = DEFAULT_START
-
+		start      = DEFAULT_START
 	)
 
 	for {
 
-		if start >100 {
+		if start > 100 {
 			log.Fatal("bind port failed too many times, exit...")
 		}
 		if mgr.BindHost != "" {
@@ -146,9 +145,9 @@ func NewRestService(mgr *Manager, router *echo.Echo) *RestService {
 		listener, err = httpserve(address, router)
 		if err != nil {
 			err = fmt.Errorf("bind address %v for RestService error %v", address, err)
-			bindPort,_ := strconv.Atoi(strings.Split(mgr.BindHost,":")[1])
-			bindPort ++
-			mgr.BindHost = strings.Split(mgr.BindHost,":")[0]+":"+strconv.Itoa(bindPort)
+			bindPort, _ := strconv.Atoi(strings.Split(mgr.BindHost, ":")[1])
+			bindPort++
+			mgr.BindHost = strings.Split(mgr.BindHost, ":")[0] + ":" + strconv.Itoa(bindPort)
 			log.Warnf("%v, try next port", err)
 			start++
 			continue

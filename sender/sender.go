@@ -65,6 +65,9 @@ const (
 // Ft sender默认同步一次meta信息的数据次数
 const DefaultFtSyncEvery = 10
 
+//向所有数据中添加agentHostName字段,如果已存在,则不做任何操作
+const KeyHostName = "host"
+
 // SenderRegistry sender 的工厂类。可以注册自定义sender
 type SenderRegistry struct {
 	senderTypeMap map[string]func(conf.MapConf) (Sender, error)

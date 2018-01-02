@@ -134,6 +134,16 @@ func (this *KafkaSender) Send(data []Data) error {
 	ss := &utils.StatsError{}
 	var lastErr error
 	for _, doc := range data {
+		//如果不存在KeyHostName字段,默认添加
+		if _, ok := doc[KeyHostName]; !ok {
+			hostName, oErr := os.Hostname()
+			if oErr != nil {
+				doc[KeyHostName] = "unKnown"
+			} else {
+				doc[KeyHostName] = hostName
+			}
+		}
+
 		message, err := this.getEventMessage(doc)
 		if err != nil {
 			log.Debugf("Dropping event: %v", err)

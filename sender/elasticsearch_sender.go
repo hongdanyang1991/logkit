@@ -13,6 +13,7 @@ import (
 
 	"github.com/qiniu/log"
 	"github.com/qiniu/logkit/conf"
+	"os"
 )
 
 // ElasticsearchSender ElasticSearch sender
@@ -188,10 +189,9 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
 			}
-			//添加发送时间
-			if ess.logkitSendTime {
-				doc[KeySendTime] = time.Now().In(ess.timeZone)
-			}
+
+			addExtraField(ess, doc)
+
 			doc2 := doc
 			bulkService.Add(elasticV6.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
 		}
@@ -215,10 +215,9 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
 			}
-			//添加发送时间
-			if ess.logkitSendTime {
-				doc[KeySendTime] = time.Now().In(ess.timeZone)
-			}
+
+			addExtraField(ess, doc)
+
 			doc2 := doc
 			bulkService.Add(elasticV5.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
 		}
@@ -242,10 +241,9 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
 			}
-			//添加发送时间
-			if ess.logkitSendTime {
-				doc[KeySendTime] = time.Now().In(ess.timeZone)
-			}
+
+			addExtraField(ess, doc)
+
 			doc2 := doc
 			bulkService.Add(elasticV3.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
 		}
@@ -256,6 +254,23 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		}
 	}
 	return
+}
+
+func addExtraField(ess *ElasticsearchSender, doc Data) {
+	//添加发送时间
+	if ess.logkitSendTime {
+		doc[KeySendTime] = time.Now().In(ess.timeZone)
+	}
+
+	//如果不存在KeyHostName字段,默认添加
+	if _, ok := doc[KeyHostName]; !ok {
+		hostName, oErr := os.Hostname()
+		if oErr != nil {
+			doc[KeyHostName] = "unKnown"
+		} else {
+			doc[KeyHostName] = hostName
+		}
+	}
 }
 
 func buildIndexName(indexName string, timeZone *time.Location, size int) string {

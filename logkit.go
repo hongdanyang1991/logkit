@@ -271,7 +271,6 @@ func sendBlogic(tenant string, bindIP string, bindPort string) {
 //！！！注意： 自动生成 grok pattern代码，下述注释请勿删除！！！
 //go:generate go run generators/grok_pattern_generater.go
 func main() {
-
 	flag.Usage = func() { usageExit(0) }
 	flag.Parse()
 	switch {
@@ -306,6 +305,7 @@ func main() {
 
 	stopRotate := make(chan struct{}, 0)
 	defer close(stopRotate)
+
 	if *logPath == "std" {
 		conf.LogPath = ""
 	} else if *logPath != "" {
@@ -340,7 +340,6 @@ func main() {
 		log.Fatalf("watch path error %v", err)
 	}
 	m.RestoreWebDir()
-
 	stopClean := make(chan struct{}, 0)
 	defer close(stopClean)
 	if conf.CleanSelfLog {
