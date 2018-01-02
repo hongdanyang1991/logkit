@@ -72,6 +72,7 @@ func (kr *KafkaReader) Status() utils.StatsInfo {
 
 func (kr *KafkaReader) setStatsError(err string) {
 	kr.statsLock.Lock()
+	kr.stats.Errors++
 	defer kr.statsLock.Unlock()
 	kr.stats.LastError = err
 }

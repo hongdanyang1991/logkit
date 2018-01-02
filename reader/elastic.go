@@ -78,6 +78,7 @@ func (er *ElasticReader) Source() string {
 
 func (er *ElasticReader) setStatsError(err string) {
 	er.statsLock.Lock()
+	er.stats.Errors++
 	defer er.statsLock.Unlock()
 	er.stats.LastError = err
 }
