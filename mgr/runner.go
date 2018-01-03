@@ -477,11 +477,11 @@ func (r *LogExportRunner) Run() {
 			r.rs.ParserStats.Success += se.Success
 			if err != nil {
 				r.rs.ParserStats.LastError = err.Error()
-
 			}
 		} else if err != nil {
 			errorCnt = 1
 			r.rs.ParserStats.Errors++
+			r.rs.ParserStats.LastError = err.Error()
 		} else {
 			r.rs.ParserStats.Success++
 		}

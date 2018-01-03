@@ -94,19 +94,22 @@ func (g *Script) Transform(datas []sender.Data) (returnData []sender.Data, ferr 
 		}
 	}()
 	go func(ctx context.Context) {
-		//执行超时,则认为全部执行失败,返回原数据
-		time.Sleep(3 * time.Second) // Stop after twok seconds
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			g.stats.LastError = halt.Error()
-			ferr = fmt.Errorf("find total %v erorrs in transform script, last error info is %v", len(returnData), halt)
-			g.stats.Errors += int64(len(datas))
-			g.stats.Success += 0
-			g.vm.Interrupt <- func() {
-				panic(halt)
+		for i := 0; i < 10; i++ {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				time.Sleep(100 * time.Millisecond)
 			}
+		}
+		//执行超时,则认为全部执行失败,返回原数据
+		g.stats.LastError = halt.Error()
+		ferr = fmt.Errorf("find total %v erorrs in transform script, last error info is %v,the batch data transform all faield", len(returnData), halt)
+		log.Error(ferr)
+		g.stats.Errors += int64(len(datas))
+		g.stats.Success += 0
+		g.vm.Interrupt <- func() {
+			panic(halt)
 		}
 	}(cancelCtx)
 

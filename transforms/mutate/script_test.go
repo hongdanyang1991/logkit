@@ -8,8 +8,8 @@ import (
 
 func TestScriptTransformer(t *testing.T) {
 	g1 := &Script{
-		OldKey: "key",
-		NewKey: "key",
+		//OldKey: "key",
+		//NewKey: "key",
 		Script: `
 		var i = 0;
 		while (true) {
