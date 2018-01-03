@@ -403,8 +403,8 @@ func (b *BufReader) Status() utils.StatsInfo {
 
 func (b *BufReader) setStatsError(err string) {
 	b.statsLock.Lock()
-	b.stats.Errors++
 	defer b.statsLock.Unlock()
+	b.stats.Errors++
 	b.stats.LastError = err
 }
 

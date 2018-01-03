@@ -334,8 +334,8 @@ func (mr *SqlReader) Name() string {
 
 func (mr *SqlReader) setStatsError(err string) {
 	mr.statsLock.Lock()
-	mr.stats.Errors++
 	defer mr.statsLock.Unlock()
+	mr.stats.Errors++
 	mr.stats.LastError = err
 }
 
