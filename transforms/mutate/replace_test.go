@@ -46,4 +46,18 @@ func TestReplaceTransformer(t *testing.T) {
 		{"multi": map[string]interface{}{"myword": "hello x0 y0 x0nihao", "abc": "x1 y2"}},
 		{"multi": map[string]interface{}{"myword": "x0x.x.x00", "abc": "x1"}}}
 	assert.Equal(t, exp3, data3)
+
+	gsub4 := &Replacer{
+		Key:   "multi.myword",
+		Old:   "\\d",
+		New:   "",
+		Regex: true,
+	}
+	gsub4.Init()
+	data4, err4 := gsub4.Transform([]sender.Data{{"multi": map[string]interface{}{"myword": "hello x1 y2 x1nihao", "abc": "x1 y2"}}, {"multi": map[string]interface{}{"myword": "x1x.x.x11", "abc": "x1"}}})
+	assert.NoError(t, err4)
+	exp4 := []sender.Data{
+		{"multi": map[string]interface{}{"myword": "hello x y xnihao", "abc": "x1 y2"}},
+		{"multi": map[string]interface{}{"myword": "xx.x.x", "abc": "x1"}}}
+	assert.Equal(t, exp4, data4)
 }
