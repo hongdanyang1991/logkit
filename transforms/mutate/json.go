@@ -82,16 +82,16 @@ func parseJson(jsonStr string) (data map[string]interface{}, err error) {
 }
 
 func (g *Json) Description() string {
-	return "pase jsonStr to json"
+	return "parse jsonStr to json"
 }
 
 func (g *Json) Type() string {
-	return "json"
+	return "jsonTransform"
 }
 
 func (g *Json) SampleConfig() string {
 	return `{
-		"type":"json",
+		"type":"jsonTransform",
 		"key":"myParseKey",
 	}`
 }
@@ -119,7 +119,7 @@ func (g *Json) Stats() utils.StatsInfo {
 }
 
 func init() {
-	transforms.Add("json", func() transforms.Transformer {
+	transforms.Add("jsonTransform", func() transforms.Transformer {
 		return &Json{}
 	})
 }
