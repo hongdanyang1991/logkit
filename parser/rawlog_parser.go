@@ -1,10 +1,10 @@
 package parser
 
 import (
+	"errors"
 	"strings"
 	"time"
-	"errors"
-	
+
 	"github.com/qiniu/logkit/conf"
 	"github.com/qiniu/logkit/sender"
 	"github.com/qiniu/logkit/utils"

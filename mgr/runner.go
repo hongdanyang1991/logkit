@@ -526,7 +526,7 @@ func (r *LogExportRunner) Run() {
 			}
 		}
 		//if success {
-			//r.reader.SyncMeta()
+		//r.reader.SyncMeta()
 		//}
 		log.Debugf("Runner[%v] send %s finish to send at: %v", r.Name(), r.reader.Name(), time.Now().Format(time.RFC3339))
 	}
