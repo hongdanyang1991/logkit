@@ -1,6 +1,8 @@
-//!!! Notice This is auto generated file, DO NOT EDIT IT!!!
+//!!! Notice This is auto generated file, DO NOT EDIT IT!!! 
 
-package parser
+
+
+package parser 
 
 const DEFAULT_PATTERNS = `S3_REQUEST_LINE (?:%{WORD:verb} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})
 
@@ -204,7 +206,7 @@ TZ (?:[PMCE][SD]T|UTC|GMT)
 DATESTAMP_RFC822 %{DAY} %{MONTH} %{MONTHDAY} %{YEAR} %{TIME} %{TZ}
 DATESTAMP_OTHER %{DAY} %{MONTH} %{MONTHDAY} %{TIME} %{TZ} %{YEAR}
 
-SYSLOGTIMESTAMP %{MONTH} +%{MONTHDAY} %{TIME}
+SYSLOGTIMESTAMP %{MONTH}%{SPACE}%{MONTHDAY}%{SPACE}%{TIME}
 PROG (?:[\w._/%-]+)
 SYSLOGPROG %{PROG:program}(?:\[%{POSINT:pid}\])?
 SYSLOGHOST %{IPORHOST}
