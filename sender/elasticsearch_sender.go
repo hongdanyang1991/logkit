@@ -13,6 +13,7 @@ import (
 
 	"github.com/qiniu/log"
 	"github.com/qiniu/logkit/conf"
+	"github.com/qiniu/logkit/times"
 	"os"
 )
 
@@ -71,6 +72,7 @@ const (
 )
 
 const KeySendTime = "sendTime"
+const KeyTimestamp = "@timestamp"
 
 // NewElasticSender New ElasticSender
 func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
@@ -184,7 +186,7 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		var indexName string
 		for _, doc := range data {
 			//计算索引
-			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex)
+			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex, doc)
 			//字段名称替换
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
@@ -210,7 +212,7 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		var indexName string
 		for _, doc := range data {
 			//计算索引
-			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex)
+			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex, doc)
 			//字段名称替换
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
@@ -236,7 +238,7 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		var indexName string
 		for _, doc := range data {
 			//计算索引
-			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex)
+			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex, doc)
 			//字段名称替换
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
@@ -273,9 +275,22 @@ func addExtraField(ess *ElasticsearchSender, doc Data) {
 	}
 }
 
-func buildIndexName(indexName string, timeZone *time.Location, size int) string {
-	now := time.Now().In(timeZone)
-	intervals := []string{strconv.Itoa(now.Year()), strconv.Itoa(int(now.Month())), strconv.Itoa(now.Day())}
+func buildIndexName(indexName string, timeZone *time.Location, size int, doc Data) string {
+	var t time.Time
+	if timestampStr, exist := doc[KeyTimestamp]; exist {
+		if timestampStr, ok := timestampStr.(string); ok {
+			if timestamp, err := times.StrToTime(timestampStr); err == nil {
+				t = timestamp.In(timeZone)
+			} else {
+				t = time.Now().In(timeZone)
+			}
+		} else {
+			t = time.Now().In(timeZone)
+		}
+	} else {
+		t = time.Now().In(timeZone)
+	}
+	intervals := []string{strconv.Itoa(t.Year()), strconv.Itoa(int(t.Month())), strconv.Itoa(t.Day())}
 	for j := 0; j < size; j++ {
 		if j == 0 {
 			indexName = indexName + "-" + intervals[j]
