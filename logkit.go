@@ -73,6 +73,7 @@ The commands & flags are:
 
   -f <file>          configuration file to load
   -l <logPath>		 Log output path
+  -b <blogicUrl>	 Blogic server url
 
 Examples:
 
@@ -87,6 +88,9 @@ Examples:
 
   #start logkit and set log output to standard output
   logkit -l std
+
+  #start logkit and set blogic server url
+  logkit -b localhost:8000/blogic
 `
 
 var (
@@ -94,6 +98,7 @@ var (
 	upgrade  = flag.Bool("upgrade", false, "check and upgrade version")
 	confName = flag.String("f", "logkit.conf", "configuration file to load")
 	logPath  = flag.String("l", "", "Log output path")
+	blogicUrl  = flag.String("b", "", "blogic server url")
 )
 
 func getValidPath(confPaths []string) (paths []string) {
@@ -227,8 +232,7 @@ func usageExit(rc int) {
 	os.Exit(rc)
 }
 
-func sendBlogic(tenant string, bindIP string, bindPort string) {
-	blogicUrl := conf.BlogicUrl
+func sendBlogic(blogicUrl string,tenant string, bindIP string, bindPort string) {
 	if blogicUrl == "" {
 		log.Errorf("获取blogic访问地址失败,无法将服务自动注册到blogic中")
 		return
@@ -311,6 +315,7 @@ func main() {
 	} else if *logPath != "" {
 		conf.LogPath = *logPath
 	}
+
 	if conf.LogPath != "" {
 		logdir, logpattern, err := utils.LogDirAndPattern(conf.LogPath)
 		if err != nil {
@@ -372,10 +377,14 @@ func main() {
 		log.Fatalf("register master error %v", err)
 	}
 
-	tenant := conf.Tenant
-	bindIP := conf.BindIP
 	bindPort := strings.Split(rs.Address(), ":")[1]
-	sendBlogic(tenant, bindIP, bindPort)
+	if *blogicUrl == "" {
+		sendBlogic(conf.BlogicUrl,conf.Tenant, conf.BindIP, bindPort)
+	}else{
+		sendBlogic(*blogicUrl,conf.Tenant, conf.BindIP, bindPort)
+	}
+
+
 
 	utils.WaitForInterrupt(func() {
 		rs.Stop()
