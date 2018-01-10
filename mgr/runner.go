@@ -131,7 +131,7 @@ type LogExportRunner struct {
 	lastSend  time.Time
 }
 
-const defaultSendIntervalSeconds = 60
+const defaultSendIntervalSeconds = 10
 const defaultMaxBatchSize = 2 * 1024 * 1024
 const qiniulogHeadPatthern = "[1-9]\\d{3}/[0-1]\\d/[0-3]\\d [0-2]\\d:[0-6]\\d:[0-6]\\d(\\.\\d{6})?"
 
