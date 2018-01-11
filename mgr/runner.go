@@ -561,11 +561,7 @@ func addSourceToData(sourceFroms []string, se *utils.StatsError, datas []sender.
 		if j >= len(datas) {
 			continue
 		}
-		if dt, ok := datas[j][datasourceTagName]; ok {
-			log.Debugf("Runner[%v] datasource tag already has data %v, ignore %v", runnername, dt, v)
-		} else {
-			datas[j][datasourceTagName] = v
-		}
+		datas[j][datasourceTagName] = v
 		j++
 	}
 	return datas
