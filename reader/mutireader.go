@@ -111,7 +111,7 @@ func (ar *ActiveReader) Run() {
 			ar.cacheLineMux.Unlock()
 			if err != nil && err != io.EOF {
 				count++
-				if count >= 3 {
+				if count <= 3 {
 					log.Warnf("Runner[%v] ActiveReader %s read error: %v", ar.runnerName, ar.originpath, err)
 				}
 				//ar.setStatsError(err.Error())
