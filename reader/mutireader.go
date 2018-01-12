@@ -97,6 +97,7 @@ func (ar *ActiveReader) Run() {
 		return
 	}
 	var err error
+	var count int = 0
 	timer := time.NewTicker(time.Second)
 	for {
 		if atomic.LoadInt32(&ar.status) == StatusStopped || atomic.LoadInt32(&ar.status) == StatusStoping {
@@ -109,8 +110,11 @@ func (ar *ActiveReader) Run() {
 			ar.readcache, err = ar.br.ReadLine()
 			ar.cacheLineMux.Unlock()
 			if err != nil && err != io.EOF {
-				log.Warnf("Runner[%v] ActiveReader %s read error: %v", ar.runnerName, ar.originpath, err)
-				ar.setStatsError(err.Error())
+				count++
+				if count >= 3 {
+					log.Warnf("Runner[%v] ActiveReader %s read error: %v", ar.runnerName, ar.originpath, err)
+				}
+				//ar.setStatsError(err.Error())
 				time.Sleep(3 * time.Second)
 				continue
 			}
