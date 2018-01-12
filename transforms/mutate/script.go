@@ -83,7 +83,7 @@ func (g *Script) Transform(datas []sender.Data) (returnData []sender.Data, ferr 
 	g.vm = otto.New()
 	g.vm.Interrupt = make(chan func(), 1) // The buffer prevents blocking
 	returnData = utils.DeepCopy(datas).([]sender.Data)
-	halt := errors.New("script transformer execution timeout")
+	halt := fmt.Errorf("script transformer execution timeout of %v second, the transform script is: %s , the batch size is %v",int(timeOut), g.Script, len(datas))
 	ctx := context.Background()
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer func() {
