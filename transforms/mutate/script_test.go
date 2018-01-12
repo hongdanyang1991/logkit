@@ -139,6 +139,17 @@ func TestScriptTransformer(t *testing.T) {
 		},
 	})
 
+	g6 := &Script{
+		OldKey:    "logLevel",
+		NewKey:    "logLevel",
+		Script:    ``,
+		DeleteOld: true,
+	}
+	g6.Init()
+	datas6, err6 := g6.Transform(getTestData())
+	assert.NoError(t, err6)
+	assert.Equal(t, datas6, getTestData())
+
 }
 
 func getTestData() []sender.Data {

@@ -28,6 +28,9 @@ type Script struct {
 	stats     utils.StatsInfo
 }
 
+//每批数据执行script的超时时间---单位是秒
+const timeOut  time.Duration = time.Duration(10)
+
 func (g *Script) Init() (err error) {
 	if g.OldKey != "" {
 		g.oldKeys, g.oldVars, err = parseKey(g.OldKey)
@@ -94,12 +97,12 @@ func (g *Script) Transform(datas []sender.Data) (returnData []sender.Data, ferr 
 		}
 	}()
 	go func(ctx context.Context) {
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 100; i++ {
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				time.Sleep(100 * time.Millisecond)
+				time.Sleep(timeOut * 10 * time.Millisecond)
 			}
 		}
 		//执行超时,则认为全部执行失败,返回原数据
