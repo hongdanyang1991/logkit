@@ -74,6 +74,7 @@ The commands & flags are:
   -f <file>          configuration file to load
   -l <logPath>		 Log output path
   -b <blogicUrl>	 Blogic server url
+  -p <blogkitPort>   Blogkit start port
 
 Examples:
 
@@ -91,6 +92,9 @@ Examples:
 
   #start logkit and set blogic server url
   logkit -b localhost:8000/blogic
+
+  #start logkit and set blogkit start port to 8100
+  logkit -p 8100
 `
 
 var (
@@ -99,6 +103,7 @@ var (
 	confName  = flag.String("f", "logkit.conf", "configuration file to load")
 	logPath   = flag.String("l", "", "Log output path")
 	blogicUrl = flag.String("b", "", "blogic server url")
+	startPort = flag.String("p", "", "blogkit start port")
 )
 
 func getValidPath(confPaths []string) (paths []string) {
@@ -353,10 +358,13 @@ func main() {
 	//if len(conf.BindHost) > 0 {
 	//	m.BindHost = conf.BindIP+":"+conf.BindPort
 	//}
-	if len(conf.BindPort) == 0 {
-		m.BindHost = conf.BindIP + ":" + DEFAULT_PORT
-	} else {
+
+	if *startPort != ""{
+		m.BindHost = conf.BindIP + ":" + *startPort
+	}else if len(conf.BindPort) != 0{
 		m.BindHost = conf.BindIP + ":" + conf.BindPort
+	}else{
+		m.BindHost = conf.BindIP + ":" + DEFAULT_PORT
 	}
 
 	e := echo.New()
