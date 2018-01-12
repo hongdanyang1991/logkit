@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/oschwald/geoip2-golang"
 	"github.com/qiniu/logkit/sender"
 	"github.com/qiniu/logkit/transforms"
 	"github.com/qiniu/logkit/utils"
-	"github.com/wangtuanjie/ip17mon"
+	"net"
 )
 
 //更全的免费数据可以在ipip.net下载
@@ -15,8 +16,17 @@ type IpTransformer struct {
 	StageTime string `json:"stage"`
 	Key       string `json:"key"`
 	DataPath  string `json:"data_path"`
-	loc       *ip17mon.Locator
+	db        *geoip2.Reader
 	stats     utils.StatsInfo
+}
+
+func (it *IpTransformer) Init() error {
+	db, err := geoip2.Open(it.DataPath)
+	if err != nil {
+		return err
+	}
+	it.db = db
+	return nil
 }
 
 func (it *IpTransformer) RawTransform(datas []string) ([]string, error) {
@@ -25,12 +35,6 @@ func (it *IpTransformer) RawTransform(datas []string) ([]string, error) {
 
 func (it *IpTransformer) Transform(datas []sender.Data) ([]sender.Data, error) {
 	var err, ferr error
-	if it.loc == nil {
-		it.loc, err = ip17mon.NewLocator(it.DataPath)
-		if err != nil {
-			return datas, err
-		}
-	}
 	errnums := 0
 	keys := utils.GetKeys(it.Key)
 	newkeys := make([]string, len(keys))
@@ -48,20 +52,27 @@ func (it *IpTransformer) Transform(datas []sender.Data) ([]sender.Data, error) {
 			err = fmt.Errorf("transform key %v data type is not string", it.Key)
 			continue
 		}
-		info, nerr := it.loc.Find(strval)
+
+		record, nerr := it.db.City(net.ParseIP(strval))
 		if nerr != nil {
 			err = nerr
 			errnums++
 			continue
 		}
-		newkeys[len(newkeys)-1] = "Region"
-		utils.SetMapValue(datas[i], info.Region, false, newkeys...)
 		newkeys[len(newkeys)-1] = "City"
-		utils.SetMapValue(datas[i], info.City, false, newkeys...)
+		utils.SetMapValue(datas[i], record.City.Names["zh-CN"], false, newkeys...)
+		Subdivisions := ""
+		if len(record.Subdivisions) > 0 {
+			Subdivisions = record.Subdivisions[0].Names["zh-CN"]
+		}
+		newkeys[len(newkeys)-1] = "Region"
+		utils.SetMapValue(datas[i], Subdivisions, false, newkeys...)
 		newkeys[len(newkeys)-1] = "Country"
-		utils.SetMapValue(datas[i], info.Country, false, newkeys...)
-		newkeys[len(newkeys)-1] = "Isp"
-		utils.SetMapValue(datas[i], info.Isp, false, newkeys...)
+		utils.SetMapValue(datas[i], record.Country.Names["zh-CN"], false, newkeys...)
+		newkeys[len(newkeys)-1] = "Latitude"
+		utils.SetMapValue(datas[i], record.Location.Latitude, false, newkeys...)
+		newkeys[len(newkeys)-1] = "Longitude"
+		utils.SetMapValue(datas[i], record.Location.Longitude, false, newkeys...)
 	}
 	if err != nil {
 		it.stats.LastError = err.Error()

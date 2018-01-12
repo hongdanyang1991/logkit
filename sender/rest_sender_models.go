@@ -452,7 +452,7 @@ var ModeKeyOptions = map[string][]utils.Option{
 		{
 			KeyName:      KeyElasticHost,
 			ChooseOnly:   false,
-			Default:      "192.168.31.203:9200",
+			Default:      "localhost:9200",
 			DefaultNoUse: false,
 			Description:  "host地址(elastic_host)",
 		},

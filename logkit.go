@@ -94,11 +94,11 @@ Examples:
 `
 
 var (
-	fversion = flag.Bool("v", false, "print the version to stdout")
-	upgrade  = flag.Bool("upgrade", false, "check and upgrade version")
-	confName = flag.String("f", "logkit.conf", "configuration file to load")
-	logPath  = flag.String("l", "", "Log output path")
-	blogicUrl  = flag.String("b", "", "blogic server url")
+	fversion  = flag.Bool("v", false, "print the version to stdout")
+	upgrade   = flag.Bool("upgrade", false, "check and upgrade version")
+	confName  = flag.String("f", "logkit.conf", "configuration file to load")
+	logPath   = flag.String("l", "", "Log output path")
+	blogicUrl = flag.String("b", "", "blogic server url")
 )
 
 func getValidPath(confPaths []string) (paths []string) {
@@ -232,7 +232,7 @@ func usageExit(rc int) {
 	os.Exit(rc)
 }
 
-func sendBlogic(blogicUrl string,tenant string, bindIP string, bindPort string) {
+func sendBlogic(blogicUrl string, tenant string, bindIP string, bindPort string) {
 	if blogicUrl == "" {
 		log.Errorf("获取blogic访问地址失败,无法将服务自动注册到blogic中")
 		return
@@ -379,12 +379,10 @@ func main() {
 
 	bindPort := strings.Split(rs.Address(), ":")[1]
 	if *blogicUrl == "" {
-		sendBlogic(conf.BlogicUrl,conf.Tenant, conf.BindIP, bindPort)
-	}else{
-		sendBlogic(*blogicUrl,conf.Tenant, conf.BindIP, bindPort)
+		sendBlogic(conf.BlogicUrl, conf.Tenant, conf.BindIP, bindPort)
+	} else {
+		sendBlogic(*blogicUrl, conf.Tenant, conf.BindIP, bindPort)
 	}
-
-
 
 	utils.WaitForInterrupt(func() {
 		rs.Stop()

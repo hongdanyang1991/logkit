@@ -29,7 +29,7 @@ type Script struct {
 }
 
 //每批数据执行script的超时时间---单位是秒
-const timeOut  time.Duration = time.Duration(10)
+const timeOut time.Duration = time.Duration(10)
 
 func (g *Script) Init() (err error) {
 	if g.OldKey != "" {
@@ -83,7 +83,7 @@ func (g *Script) Transform(datas []sender.Data) (returnData []sender.Data, ferr 
 	g.vm = otto.New()
 	g.vm.Interrupt = make(chan func(), 1) // The buffer prevents blocking
 	returnData = utils.DeepCopy(datas).([]sender.Data)
-	halt := fmt.Errorf("script transformer execution timeout of %v second, the transform script is: %s , the batch size is %v",int(timeOut), g.Script, len(datas))
+	halt := fmt.Errorf("script transformer execution timeout of %v second, the transform script is: %s , the batch size is %v", int(timeOut), g.Script, len(datas))
 	ctx := context.Background()
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer func() {
@@ -181,6 +181,7 @@ func (g *Script) Transform(datas []sender.Data) (returnData []sender.Data, ferr 
 	g.stats.Errors += int64(errnums)
 	g.stats.Success += int64(len(datas) - errnums)
 	returnData = datas
+
 	return
 }
 
