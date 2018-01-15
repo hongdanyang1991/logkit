@@ -185,14 +185,14 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		}
 		var indexName string
 		for _, doc := range data {
-			//计算索引
-			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex, doc)
 			//字段名称替换
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
 			}
-
+			//添加额外字段
 			addExtraField(ess, doc)
+			//计算索引
+			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex, doc)
 
 			doc2 := doc
 			bulkService.Add(elasticV6.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
@@ -211,14 +211,14 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		}
 		var indexName string
 		for _, doc := range data {
-			//计算索引
-			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex, doc)
 			//字段名称替换
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
 			}
-
+			//添加额外字段
 			addExtraField(ess, doc)
+			//计算索引
+			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex, doc)
 
 			doc2 := doc
 			bulkService.Add(elasticV5.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
@@ -237,14 +237,14 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		}
 		var indexName string
 		for _, doc := range data {
-			//计算索引
-			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex, doc)
 			//字段名称替换
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
 			}
-
+			//添加额外字段
 			addExtraField(ess, doc)
+			//计算索引
+			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex, doc)
 
 			doc2 := doc
 			bulkService.Add(elasticV3.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
@@ -259,9 +259,14 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 }
 
 func addExtraField(ess *ElasticsearchSender, doc Data) {
+	now := time.Now()
 	//添加发送时间
 	if ess.logkitSendTime {
-		doc[KeySendTime] = time.Now().In(ess.timeZone)
+		doc[KeySendTime] = now.In(ess.timeZone)
+	}
+
+	if _, exist := doc[KeyTimestamp]; !exist {
+		doc[KeyTimestamp] = now.String()
 	}
 
 	//如果不存在KeyHostName字段,默认添加
