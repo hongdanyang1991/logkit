@@ -266,7 +266,7 @@ func addExtraField(ess *ElasticsearchSender, doc Data) {
 	}
 
 	if _, exist := doc[KeyTimestamp]; !exist {
-		doc[KeyTimestamp] = now.String()
+		doc[KeyTimestamp] = now.Format(time.RFC3339Nano)
 	}
 
 	//如果不存在KeyHostName字段,默认添加
