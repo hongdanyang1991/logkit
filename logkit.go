@@ -21,6 +21,7 @@ import (
 	"github.com/qiniu/logkit/utils"
 
 	"github.com/labstack/echo"
+	"github.com/qiniu/logkit/plugin"
 )
 
 //Config of logkit
@@ -37,6 +38,9 @@ type Config struct {
 	CleanSelfLogCnt  int      `json:"clean_self_cnt"`
 	StaticRootPath   string   `json:"static_root_path"`
 	mgr.ManagerConfig
+
+	Plugin        	 *plugin.PluginConfig     `json:"plugin"`
+
 }
 
 var conf Config
