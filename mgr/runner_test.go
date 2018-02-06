@@ -2,10 +2,10 @@ package mgr
 
 import (
 	"io/ioutil"
-	"log/syslog"
+	//"log/syslog"
 	"os"
 	"path/filepath"
-	"strings"
+	//"strings"
 	"testing"
 	"time"
 
@@ -731,7 +731,7 @@ func TestCopyStats(t *testing.T) {
 	}
 }
 
-func TestSyslogRunnerX(t *testing.T) {
+/*func TestSyslogRunnerX(t *testing.T) {
 	metaDir := "TestSyslogRunner"
 
 	os.Mkdir(metaDir, 0755)
@@ -777,7 +777,7 @@ func TestSyslogRunnerX(t *testing.T) {
 	if !strings.Contains(string(data), "this is OK") || !strings.Contains(string(data), "And this is a daemon emergency with demotag.") {
 		t.Error("syslog parse error")
 	}
-}
+}*/
 
 func TestAddDatasource(t *testing.T) {
 	sourceFroms := []string{"a", "b", "c", "d", "e", "f"}

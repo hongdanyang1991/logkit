@@ -1,22 +1,26 @@
 package plugin
 
-import "testing"
+import (
+	"testing"
+	"fmt"
+)
 
 func TestListPlugins(t *testing.T) {
-	config = &PluginConfig{
+	Conf = &Config{
 		Enabled:true,
 		Dir:"E:\\Go\\GOPATH\\src\\github.com\\qiniu\\logkit\\plugins",
 		Git:"",
 	}
-	ListPlugins()
+	SyncPlugins()
 }
 
 func TestPluginRun(t *testing.T) {
 	plugin := &Plugin{
-		FilePath:"E:\\Go\\GOPATH\\src\\github.com\\qiniu\\logkit\\plugins\\hello",
+		Path:"E:\\Go\\GOPATH\\src\\github.com\\qiniu\\logkit\\plugins\\hello",
 		MTime:1000000,
-		Cycle:10,
+		DefaultCycle:10,
 		ExecFile:"10_hello.exe",
 	}
-	PluginRun(plugin)
+	metric := PluginRun(plugin, "a")
+	fmt.Println(metric)
 }
