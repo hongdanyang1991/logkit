@@ -32,7 +32,7 @@ const DefaultBatchCount  = 10
 type PluginRunner struct {
 	RunnerName 		 string					`json:"name"`
 	Type			 string
-	transformers 	 map[string][]transforms.Transformer
+	transformers 	 []transforms.Transformer
 	meta             *reader.Meta
 	rs               RunnerStatus
 	lastRs           RunnerStatus
@@ -40,6 +40,7 @@ type PluginRunner struct {
 	lastSend         time.Time
 	stopped          int32
 	exitChan         chan struct{}
+	exitSuccessChan	 chan struct{}
 	senders      	 []sender.Sender
 	Ticker           *time.Ticker
 	BatchCount       int
@@ -70,6 +71,12 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 	if rc.MaxBatchLen <= 0 {
 		rc.MaxBatchLen = DefaultBatchCount
 	}
+	if rc.MaxBatchInteval <= 0 {
+		rc.MaxBatchInteval = defaultSendIntervalSeconds
+	}
+	if rc.MaxBatchLen > rc.MaxBatchInteval/rc.CollectInterval {
+		rc .MaxBatchLen = rc.MaxBatchInteval/rc.CollectInterval
+	}
 	confBytes, err := jsoniter.MarshalIndent(rc.PluginConfig.Config, "", "    ")
 	if err != nil {
 		return nil, fmt.Errorf("plugin config %v marshal failed, err is %v", rc.PluginConfig.Config, err)
@@ -88,11 +95,7 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 		return nil, err
 	}
 	//transformer
-	transformers := make(map[string][]transforms.Transformer)
-	for i := range rc.Transforms {
-		//
-		i = i
-	}
+	transformers := createTransformers(rc)
 	//sender
 	for i := range rc.SenderConfig {
 		rc.SenderConfig[i][sender.KeyRunnerName] = rc.RunnerName
@@ -109,6 +112,7 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 	runner = &PluginRunner{
 		RunnerName: rc.RunnerName,
 		exitChan:	make(chan struct{}),
+		exitSuccessChan:	make(chan struct{}),
 		lastSend:   time.Now(), // 上一次发送时间
 		meta:       meta,
 		rs: RunnerStatus{
@@ -134,6 +138,7 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 		transformers:    transformers,
 		senders:         senders,
 	}
+	runner.StatusRestore()
 	return
 }
 
@@ -142,29 +147,47 @@ func (pr *PluginRunner) Name() string {
 }
 
 func (pr *PluginRunner) Run() {
-	defer close(pr.exitChan)
+	defer close(pr.exitSuccessChan)
 	dataCnt := 0
 	datas := make([]sender.Data, 0)
 	for {
 		select {
+		case <- pr.exitChan:
+			log.Debugf("runner %v exited from run", pr.RunnerName)
+			pr.Ticker.Stop()
+			pr.exitSuccessChan <- struct{}{}
+			return
 		case <-pr.Ticker.C:
-			data := plugin.PluginRun(plugin.Plugins[pr.Type], pr.PluginConfig)
+			data, err := plugin.PluginRun(plugin.Plugins[pr.Type], pr.PluginConfig, pr.Cycle)
+			if err!= nil {
+				log.Error(err)
+				dataCnt ++
+				break
+			}
+			//添加@timestamp字段
+			if _, exist := data["@timestamp"]; !exist {
+				data["@timestamp"] = time.Now().Format(time.RFC3339Nano)
+			}
 			datas = append(datas, data)
 			dataCnt++
-			if dataCnt >= pr.BatchCount {
+			pr.rs.ReadDataCount ++
+			if dataCnt >= pr.BatchCount && len(datas) > 0{
+				for i := range pr.transformers {
+					if pr.transformers[i].Stage() == transforms.StageAfterParser {
+						datas, err = pr.transformers[i].Transform(datas)
+						if err != nil {
+							log.Error(err)
+						}
+					}
+				}
 				for _, s := range pr.senders {
 					if !pr.trySend(s, datas, 3) {
 						log.Errorf("failed to send metricData: << %v >>", datas)
-						break
 					}
 				}
-
 				dataCnt = 0
 				datas = make([]sender.Data, 0)
 			}
-		case <-pr.exitChan:
-			pr.Ticker.Stop()
-			return
 		}
 	}
 }
@@ -223,11 +246,13 @@ func (pr *PluginRunner) trySend (s sender.Sender, datas []sender.Data, times int
 }
 
 func (pr *PluginRunner) Stop() {
+	defer close(pr.exitChan)
 	atomic.AddInt32(&pr.stopped, 1)
+	pr.exitChan <- struct{}{}
 	log.Warnf("wait for PluginRunner " + pr.Name() + " stopped")
 	timer := time.NewTimer(time.Second * 10)
 	select {
-	case <-pr.exitChan:
+	case <-pr.exitSuccessChan:
 		log.Warnf("PluginRunner " + pr.Name() + " has been stopped ")
 	case <-timer.C:
 		log.Warnf("PluginRunner " + pr.Name() + " exited timeout ")
@@ -240,6 +265,7 @@ func (pr *PluginRunner) Stop() {
 			log.Warnf("sender %v of PluginRunner %v closed", s.Name(), pr.Name())
 		}
 	}
+	os.Remove(pr.PluginConfig)
 }
 
 func (pr *PluginRunner) Reset() error {
@@ -269,7 +295,7 @@ func (pr *PluginRunner) getStatusFrequently(rss *RunnerStatus, now time.Time) (b
 	pr.rsMutex.RLock()
 	defer pr.rsMutex.RUnlock()
 	elaspedTime := now.Sub(pr.rs.lastState).Seconds()
-	if elaspedTime <= 3 {
+	if elaspedTime <= float64(pr.Cycle * 2) {
 		deepCopy(rss, &pr.rs)
 		return true, elaspedTime
 	}
@@ -289,7 +315,7 @@ func (pr *PluginRunner) Status() RunnerStatus {
 	pr.rs.Elaspedtime += elaspedtime
 	pr.rs.lastState = now
 	durationTime := float64(pr.Cycle)
-	pr.rs.ReadSpeed = float64(pr.rs.ReadDataCount-pr.lastRs.ReadDataCount) / durationTime
+	pr.rs.ReadSpeed = float64(pr.rs.ReadDataCount-pr.lastRs.ReadDataCount) / elaspedtime
 	pr.rs.ReadSpeedTrend = getTrend(pr.lastRs.ReadSpeed, pr.rs.ReadSpeed)
 
 	for i := range pr.senders {

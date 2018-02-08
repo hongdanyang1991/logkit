@@ -6,7 +6,7 @@ import (
 	"strings"
 	"strconv"
 	"github.com/toolkits/file"
-	"log"
+	"github.com/qiniu/log"
 
 	"sync"
 	"os"
@@ -115,17 +115,16 @@ func SyncPlugins() error {
 	return nil
 }
 
-func PluginRun(plugin *Plugin, configFile string) (metric map[string]interface{}) {
+func PluginRun(plugin *Plugin, configFile string, Cycle int) (metric map[string]interface{}, err error) {
 
-	timeout := plugin.DefaultCycle*1000 - 500
+	timeout := Cycle * 1000 - 500
 	exePath := filepath.Join(plugin.Path, plugin.ExecFile)
 
 	if !file.IsExist(exePath) {
-		log.Println("no such plugin:", exePath)
-		return
+		return nil, fmt.Errorf("no executable file error :%v", exePath)
 	}
 
-	log.Println(exePath, "running...")
+	log.Debugf(exePath, " running...")
 
 	cmd := exec.Command(exePath, configFile)
 	var stdout bytes.Buffer
@@ -136,49 +135,39 @@ func PluginRun(plugin *Plugin, configFile string) (metric map[string]interface{}
 	//linux环境下放开-------------------------
 	//cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Start()
-	log.Println("plugin started:", exePath)
+	log.Debugf("plugin started: ", exePath)
 
 	err, isTimeout := sys.CmdRunWithTimeout(cmd, time.Duration(timeout)*time.Millisecond)
-
-	errStr := stderr.String()
-	if errStr != "" {
-		logFile := filepath.Join(plugin.Path, "log", "stderr.log")
-		if _, err = file.WriteString(logFile, errStr); err != nil {
-			log.Printf("[ERROR] write log to %s fail, error: %s\n", logFile, err)
-		}
-	}
 
 	if isTimeout {
 		// has be killed
 		if err == nil  {
-			log.Println("[INFO] timeout and kill process", exePath, "successfully")
+			err = fmt.Errorf("plugin %v run timeout and has been killed successfully", exePath)
 		}
 
 		if err != nil {
-			log.Println("[ERROR] kill process", exePath, "occur error:", err)
+			err = fmt.Errorf("plugin %v run timeout with err %v and has been killed successfully", exePath, err.Error())
 		}
-
 		return
 	}
 
 	if err != nil {
-		log.Println("[ERROR] exec plugin", exePath, "fail. error:", err)
+		err = fmt.Errorf("plugin %v run failed with err %v and has been killed successfully", exePath, err.Error())
 		return
 	}
 
 	// exec successfully
 	data := stdout.Bytes()
 	if len(data) == 0 {
-		log.Println("[DEBUG] stdout of", exePath, "is blank")
+		err = fmt.Errorf("plugin %v stdout is blank", exePath)
 		return
 	}
 	err = json.Unmarshal(data, &metric)
 	if err != nil {
-		log.Printf("[ERROR] json.Unmarshal stdout of %s fail. error:%s stdout: \n%s\n", exePath, err, stdout.String())
-		return
+		err = fmt.Errorf("json.Unmarshal stdout of %s fail. error:%s stdout: \n%s\n", exePath, err, stdout.String())
+		return nil , err
 	}
 	return
-	//g.SendToTransfer(metrics)
 }
 
 func DelNoUsePlugins(newPlugins map[string]*Plugin) {
