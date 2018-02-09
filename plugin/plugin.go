@@ -126,7 +126,7 @@ func PluginRun(plugin *Plugin, configFile string, Cycle int) (metric map[string]
 
 	log.Debugf(exePath, " running...")
 
-	cmd := exec.Command(exePath, configFile)
+	cmd := exec.Command(exePath, "-f", configFile)
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	var stderr bytes.Buffer
