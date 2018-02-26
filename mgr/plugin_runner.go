@@ -10,6 +10,7 @@ import (
 	"github.com/qiniu/logkit/utils"
 	"fmt"
 	"github.com/qiniu/logkit/conf"
+	. "github.com/qiniu/logkit/utils/models"
 	"sync/atomic"
 	"github.com/qiniu/log"
 	"errors"
@@ -51,7 +52,7 @@ type PluginRunner struct {
 func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *PluginRunner, err error) {
 	//meta
 	meta, err := reader.NewMetaWithConf(conf.MapConf{
-		utils.GlobalKeyName:  rc.RunnerName,
+		GlobalKeyName:  rc.RunnerName,
 		reader.KeyRunnerName: rc.RunnerName,
 		reader.KeyMode:       reader.ModeMetrics,
 	})
@@ -71,11 +72,11 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 	if rc.MaxBatchLen <= 0 {
 		rc.MaxBatchLen = DefaultBatchCount
 	}
-	if rc.MaxBatchInteval <= 0 {
-		rc.MaxBatchInteval = defaultSendIntervalSeconds
+	if rc.MaxBatchInterval <= 0 {
+		rc.MaxBatchInterval = defaultSendIntervalSeconds
 	}
-	if rc.MaxBatchLen > rc.MaxBatchInteval/rc.CollectInterval {
-		rc .MaxBatchLen = rc.MaxBatchInteval/rc.CollectInterval
+	if rc.MaxBatchLen > rc.MaxBatchInterval/rc.CollectInterval {
+		rc .MaxBatchLen = rc.MaxBatchInterval/rc.CollectInterval
 	}
 	confBytes, err := jsoniter.MarshalIndent(rc.PluginConfig.Config, "", "    ")
 	if err != nil {
@@ -149,7 +150,7 @@ func (pr *PluginRunner) Name() string {
 func (pr *PluginRunner) Run() {
 	defer close(pr.exitSuccessChan)
 	dataCnt := 0
-	datas := make([]sender.Data, 0)
+	datas := make([]Data, 0)
 	for {
 		select {
 		case <- pr.exitChan:
@@ -186,13 +187,13 @@ func (pr *PluginRunner) Run() {
 					}
 				}
 				dataCnt = 0
-				datas = make([]sender.Data, 0)
+				datas = make([]Data, 0)
 			}
 		}
 	}
 }
 
-func (pr *PluginRunner) trySend (s sender.Sender, datas []sender.Data, times int) bool {
+func (pr *PluginRunner) trySend (s sender.Sender, datas []Data, times int) bool {
 	if len(datas) <= 0 {
 		return true
 	}
