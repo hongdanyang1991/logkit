@@ -127,12 +127,13 @@ func PluginRun(plugin *Plugin, configFile string, Cycle int) (metric map[string]
 	log.Debugf(exePath, " running...")
 
 	cmd := exec.Command(exePath, "-f", configFile)
+	//cmd := exec.Command(exePath)
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
-	//linux环境下放开-------------------------
+	//linux环境下放开----------------------------------------------------
 	//cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Start()
 	log.Debugf("plugin started: ", exePath)
@@ -162,6 +163,10 @@ func PluginRun(plugin *Plugin, configFile string, Cycle int) (metric map[string]
 		err = fmt.Errorf("plugin %v stdout is blank", exePath)
 		return
 	}
+
+	//jsonStr := string(data)
+	//fmt.Println(jsonStr)
+
 	err = json.Unmarshal(data, &metric)
 	if err != nil {
 		err = fmt.Errorf("json.Unmarshal stdout of %s fail. error:%s stdout: \n%s\n", exePath, err, stdout.String())

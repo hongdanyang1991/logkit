@@ -266,6 +266,7 @@ func (pr *PluginRunner) Stop() {
 			log.Warnf("sender %v of PluginRunner %v closed", s.Name(), pr.Name())
 		}
 	}
+	//停止runner,删除配置文件
 	os.Remove(pr.PluginConfig)
 }
 
