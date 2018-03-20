@@ -149,7 +149,6 @@ func (pr *PluginRunner) Name() string {
 
 func (pr *PluginRunner) Run() {
 	defer close(pr.exitSuccessChan)
-	dataCnt := 0
 	datas := make([]Data, 0)
 	for {
 		select {
@@ -159,20 +158,20 @@ func (pr *PluginRunner) Run() {
 			pr.exitSuccessChan <- struct{}{}
 			return
 		case <-pr.Ticker.C:
-			data, err := plugin.PluginRun(plugin.Plugins[pr.Type], pr.PluginConfig, pr.Cycle)
+			resDatas, err := plugin.PluginRun(plugin.Plugins[pr.Type], pr.PluginConfig, pr.Cycle)
 			if err!= nil {
 				log.Error(err)
-				dataCnt ++
 				break
 			}
 			//添加@timestamp字段
-			if _, exist := data["@timestamp"]; !exist {
-				data["@timestamp"] = time.Now().Format(time.RFC3339Nano)
+			for _, data := range resDatas {
+				if _, exist := data["@timestamp"]; !exist {
+					data["@timestamp"] = time.Now().Format(time.RFC3339Nano)
+				}
 			}
-			datas = append(datas, data)
-			dataCnt++
-			pr.rs.ReadDataCount ++
-			if dataCnt >= pr.BatchCount && len(datas) > 0{
+			datas = append(datas, resDatas...)
+			pr.rs.ReadDataCount += int64(len(resDatas))
+			if len(datas)  >= pr.BatchCount {
 				for i := range pr.transformers {
 					if pr.transformers[i].Stage() == transforms.StageAfterParser {
 						datas, err = pr.transformers[i].Transform(datas)
@@ -186,7 +185,6 @@ func (pr *PluginRunner) Run() {
 						log.Errorf("failed to send metricData: << %v >>", datas)
 					}
 				}
-				dataCnt = 0
 				datas = make([]Data, 0)
 			}
 		}

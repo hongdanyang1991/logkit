@@ -18,6 +18,7 @@ import (
 	"time"
 	"encoding/json"
 	"fmt"
+	. "github.com/qiniu/logkit/utils/models"
 )
 
 type Plugin struct {
@@ -115,7 +116,7 @@ func SyncPlugins() error {
 	return nil
 }
 
-func PluginRun(plugin *Plugin, configFile string, Cycle int) (metric map[string]interface{}, err error) {
+func PluginRun(plugin *Plugin, configFile string, Cycle int) (metrics []Data, err error) {
 
 	timeout := Cycle * 1000 - 500
 	exePath := filepath.Join(plugin.Path, plugin.ExecFile)
@@ -167,7 +168,7 @@ func PluginRun(plugin *Plugin, configFile string, Cycle int) (metric map[string]
 	//jsonStr := string(data)
 	//fmt.Println(jsonStr)
 
-	err = json.Unmarshal(data, &metric)
+	err = json.Unmarshal(data, &metrics)
 	if err != nil {
 		err = fmt.Errorf("json.Unmarshal stdout of %s fail. error:%s stdout: \n%s\n", exePath, err, stdout.String())
 		return nil , err

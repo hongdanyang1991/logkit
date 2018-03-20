@@ -14,6 +14,7 @@ import (
 	elasticV6 "github.com/olivere/elastic"
 	elasticV3 "gopkg.in/olivere/elastic.v3"
 	elasticV5 "gopkg.in/olivere/elastic.v5"
+	"github.com/qiniu/logkit/utils"
 )
 
 // ElasticsearchSender ElasticSearch sender
@@ -22,7 +23,7 @@ type ElasticsearchSender struct {
 
 	host            []string
 	retention       int
-	indexName       string
+	indexName       []string
 	eType           string
 	eVersion        string
 	elasticV3Client *elasticV3.Client
@@ -39,7 +40,7 @@ type ElasticsearchSender struct {
 const (
 	KeyElasticHost    = "elastic_host"
 	KeyElasticVersion = "elastic_version"
-	KeyElasticIndex   = "elastic_index"
+	KeyElasticIndex   = "elastic_index"   //index 1.填一个值,则index为所填值 2.填两个值: %{[字段名]}, defaultIndex :根据每条event,以指定字段值为index,若无,则用默认值
 	KeyElasticType    = "elastic_type"
 	KeyElasticAlias   = "elastic_keys"
 
@@ -84,7 +85,12 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 		}
 	}
 
-	index, err := conf.GetString(KeyElasticIndex)
+	index, err := conf.GetStringList(KeyElasticIndex)
+	if err != nil {
+		return
+	}
+
+	index, err = utils.ExtractField(index)
 	if err != nil {
 		return
 	}
@@ -168,7 +174,7 @@ func machPattern(s string, strategys []string) (i int, err error) {
 
 // Name ElasticSearchSenderName
 func (ess *ElasticsearchSender) Name() string {
-	return "//" + ess.indexName
+	return ess.name
 }
 
 // Send ElasticSearchSender
@@ -184,7 +190,10 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		var indexName string
 		for _, doc := range data {
 			//计算索引
-			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex)
+			indexName, err = buildIndexName(doc, ess.indexName, ess.timeZone, ess.intervalIndex)
+			if err != nil {
+				return err
+			}
 			//字段名称替换
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
@@ -211,7 +220,10 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		var indexName string
 		for _, doc := range data {
 			//计算索引
-			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex)
+			indexName, err = buildIndexName(doc, ess.indexName, ess.timeZone, ess.intervalIndex)
+			if err != nil {
+				return err
+			}
 			//字段名称替换
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
@@ -238,7 +250,10 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		var indexName string
 		for _, doc := range data {
 			//计算索引
-			indexName = buildIndexName(ess.indexName, ess.timeZone, ess.intervalIndex)
+			indexName, err = buildIndexName(doc, ess.indexName, ess.timeZone, ess.intervalIndex)
+			if err != nil {
+				return err
+			}
 			//字段名称替换
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
@@ -259,9 +274,29 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 	return
 }
 
-func buildIndexName(indexName string, timeZone *time.Location, size int) string {
+func buildIndexName(data Data, index []string, timeZone *time.Location, size int) (string, error){
+	var indexName string
 	now := time.Now().In(timeZone)
 	intervals := []string{strconv.Itoa(now.Year()), strconv.Itoa(int(now.Month())), strconv.Itoa(now.Day())}
+	if len(index) == 2 {
+		if data[index[0]] == nil || data[index[0]] == "" {
+			indexName = index[1]
+		} else {
+			if myIndexName, ok := data[index[0]].(string); ok {
+				indexName = myIndexName
+			} else {
+				indexName = index[1]
+			}
+		}
+	} else {
+		indexName = index[0]
+	}
+
+	indexName = strings.ToLower(indexName)
+	if !checkESIndexLegal(indexName) {
+		return "", fmt.Errorf("given elasticSearch indexName is illegal")
+	}
+
 	for j := 0; j < size; j++ {
 		if j == 0 {
 			indexName = indexName + "-" + intervals[j]
@@ -272,7 +307,12 @@ func buildIndexName(indexName string, timeZone *time.Location, size int) string 
 			indexName = indexName + "." + intervals[j]
 		}
 	}
-	return indexName
+	return indexName, nil
+}
+
+func checkESIndexLegal(indexName string) bool {
+
+	return true
 }
 
 // Close ElasticSearch Sender Close
