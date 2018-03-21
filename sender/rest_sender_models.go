@@ -556,8 +556,8 @@ var ModeKeyOptions = map[string][]Option{
 		{
 			KeyName:       KeyElasticTimezone,
 			ChooseOnly:    true,
-			ChooseOptions: []interface{}{KeyUTCTimezone, KeylocalTimezone, KeyPRCTimezone},
-			Default:       KeyUTCTimezone,
+			ChooseOptions: []interface{}{KeyUTCTimezone, KeyLocalTimezone, KeyPRCTimezone},
+			Default:       KeyDefaultTimezone,
 			DefaultNoUse:  false,
 			Description:   "索引时区(Local(本地)|UTC(标准时间)|PRC(北京时间))(elastic_time_zone)",
 		},

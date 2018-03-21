@@ -164,11 +164,11 @@ func (pr *PluginRunner) Run() {
 				break
 			}
 			//添加@timestamp字段
-			for _, data := range resDatas {
+			/*for _, data := range resDatas {
 				if _, exist := data["@timestamp"]; !exist {
 					data["@timestamp"] = time.Now().Format(time.RFC3339Nano)
 				}
-			}
+			}*/
 			datas = append(datas, resDatas...)
 			pr.rs.ReadDataCount += int64(len(resDatas))
 			if len(datas)  >= pr.BatchCount {

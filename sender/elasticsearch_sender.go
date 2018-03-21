@@ -15,6 +15,7 @@ import (
 	elasticV3 "gopkg.in/olivere/elastic.v3"
 	elasticV5 "gopkg.in/olivere/elastic.v5"
 	"github.com/qiniu/logkit/utils"
+	"github.com/qiniu/logkit/times"
 )
 
 // ElasticsearchSender ElasticSearch sender
@@ -35,6 +36,7 @@ type ElasticsearchSender struct {
 	intervalIndex  int
 	timeZone       *time.Location
 	logkitSendTime bool
+	timestamp 	   string
 }
 
 const (
@@ -46,6 +48,7 @@ const (
 
 	KeyElasticIndexStrategy = "elastic_index_strategy"
 	KeyElasticTimezone      = "elastic_time_zone"
+	keyElasticTimestamp		= "elastic_timestamp"  //指定时间戳字段  1.若为空,则不指定 2.若某条数据不存在该字段,则创建,并以当前时间为value 3.若某条数据存在该字段且无法转换成时间类型,则丢弃该条数据
 )
 
 const (
@@ -66,9 +69,10 @@ var (
 
 //timeZone
 const (
-	KeylocalTimezone = "Local"
+	KeyLocalTimezone = "Local"
 	KeyUTCTimezone   = "UTC"
 	KeyPRCTimezone   = "PRC"
+	KeyDefaultTimezone = KeyUTCTimezone
 )
 
 const KeySendTime = "sendTime"
@@ -97,7 +101,7 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 
 	// 索引后缀模式
 	indexStrategy, _ := conf.GetStringOr(KeyElasticIndexStrategy, KeyDefaultIndexStrategy)
-	timezone, _ := conf.GetStringOr(KeyElasticTimezone, KeyUTCTimezone)
+	timezone, _ := conf.GetStringOr(KeyElasticTimezone, KeyDefaultTimezone)
 	timeZone, err := time.LoadLocation(timezone)
 	if err != nil {
 		return
@@ -107,6 +111,7 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 	name, _ := conf.GetStringOr(KeyName, fmt.Sprintf("elasticSender:(elasticUrl:%s,index:%s,type:%s)", host, index, eType))
 	fields, _ := conf.GetAliasMapOr(KeyElasticAlias, make(map[string]string))
 	eVersion, _ := conf.GetStringOr(KeyElasticVersion, ElasticVersion3)
+	timestamp, _ := conf.GetString(keyElasticTimestamp)
 
 	strategy := []string{KeyDefaultIndexStrategy, KeyYearIndexStrategy, KeyMonthIndexStrategy, KeyDayIndexStrategy}
 
@@ -156,6 +161,7 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 		intervalIndex:   i,
 		timeZone:        timeZone,
 		logkitSendTime:  logkitSendTime,
+		timestamp:		 timestamp,
 	}, nil
 }
 
@@ -189,10 +195,14 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		}
 		var indexName string
 		for _, doc := range data {
+
+			//加工字段
+			if err = processDoc(ess, doc); err != nil {
+				continue
+			}
 			//计算索引
-			indexName, err = buildIndexName(doc, ess.indexName, ess.timeZone, ess.intervalIndex)
-			if err != nil {
-				return err
+			if indexName, err = buildIndexName(ess, doc, ess.indexName, ess.timeZone, ess.intervalIndex); err != nil {
+				continue
 			}
 			//字段名称替换
 			if makeDoc {
@@ -219,10 +229,13 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		}
 		var indexName string
 		for _, doc := range data {
+			//加工字段
+			if err = processDoc(ess, doc); err != nil {
+				continue
+			}
 			//计算索引
-			indexName, err = buildIndexName(doc, ess.indexName, ess.timeZone, ess.intervalIndex)
-			if err != nil {
-				return err
+			if indexName, err = buildIndexName(ess, doc, ess.indexName, ess.timeZone, ess.intervalIndex); err != nil {
+				continue
 			}
 			//字段名称替换
 			if makeDoc {
@@ -249,10 +262,13 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		}
 		var indexName string
 		for _, doc := range data {
+			//加工字段
+			if err = processDoc(ess, doc); err != nil {
+				continue
+			}
 			//计算索引
-			indexName, err = buildIndexName(doc, ess.indexName, ess.timeZone, ess.intervalIndex)
-			if err != nil {
-				return err
+			if indexName, err = buildIndexName(ess, doc, ess.indexName, ess.timeZone, ess.intervalIndex); err != nil {
+				continue
 			}
 			//字段名称替换
 			if makeDoc {
@@ -274,10 +290,43 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 	return
 }
 
-func buildIndexName(data Data, index []string, timeZone *time.Location, size int) (string, error){
+func processDoc(ess *ElasticsearchSender, doc Data) error {
+	if ess.timestamp != "" {
+		if _, ok := doc[ess.timestamp]; ok {
+			//验证是否为日期字符串
+			if timeStr, ok := doc[ess.timestamp].(string); ok {
+				timestamp, err := times.StrToTime(timeStr)
+				if err != nil {
+					return err
+				}
+				doc[ess.timestamp] = timestamp.In(ess.timeZone).Format(time.RFC3339Nano)
+			}
+			return fmt.Errorf("timestamp %v is not timeStr", doc[ess.timestamp])
+
+		} else {
+			doc[ess.timestamp] = time.Now().In(ess.timeZone).Format(time.RFC3339Nano)
+		}
+	}
+	return nil
+}
+
+func buildIndexName(ess *ElasticsearchSender, data Data, index []string, timeZone *time.Location, size int) (string, error){
 	var indexName string
-	now := time.Now().In(timeZone)
-	intervals := []string{strconv.Itoa(now.Year()), strconv.Itoa(int(now.Month())), strconv.Itoa(now.Day())}
+	var timestamp time.Time
+	var err error
+	if  ess.timestamp == "" || data[ess.timestamp] == ""{
+		timestamp = time.Now()
+	} else {
+		if timeStr, ok := data[ess.timestamp].(string); ok {
+			if timestamp, err = times.StrToTime(timeStr); err != nil {
+				return "", err
+			}
+		} else {
+			return "", fmt.Errorf("timestamp %v is not timeStr", data[ess.timestamp])
+		}
+	}
+	timestamp = timestamp.In(timeZone)
+	intervals := []string{strconv.Itoa(timestamp.Year()), strconv.Itoa(int(timestamp.Month())), strconv.Itoa(timestamp.Day())}
 	if len(index) == 2 {
 		if data[index[0]] == nil || data[index[0]] == "" {
 			indexName = index[1]
@@ -292,8 +341,7 @@ func buildIndexName(data Data, index []string, timeZone *time.Location, size int
 		indexName = index[0]
 	}
 
-	indexName = strings.ToLower(indexName)
-	if !checkESIndexLegal(indexName) {
+	if err = checkESIndexLegal(&indexName); err != nil {
 		return "", fmt.Errorf("given elasticSearch indexName is illegal")
 	}
 
@@ -310,9 +358,10 @@ func buildIndexName(data Data, index []string, timeZone *time.Location, size int
 	return indexName, nil
 }
 
-func checkESIndexLegal(indexName string) bool {
-
-	return true
+//检测elasticsearch名称是否合法,并将字符转换成小写
+func checkESIndexLegal(indexName *string) (error) {
+	*indexName = strings.ToLower(*indexName)
+	return nil
 }
 
 // Close ElasticSearch Sender Close
