@@ -174,7 +174,7 @@ func machPattern(s string, strategys []string) (i int, err error) {
 			return i, err
 		}
 	}
-	err = fmt.Errorf("Unknown index_strategy: '%s'", s)
+	err = fmt.Errorf("unknown index_strategy: '%s'", s)
 	return i, err
 }
 
@@ -300,9 +300,9 @@ func processDoc(ess *ElasticsearchSender, doc Data) error {
 					return err
 				}
 				doc[ess.timestamp] = timestamp.In(ess.timeZone).Format(time.RFC3339Nano)
+			} else {
+				return fmt.Errorf("appointed timestamp field: %v is not type of string", doc[ess.timestamp])
 			}
-			return fmt.Errorf("timestamp %v is not timeStr", doc[ess.timestamp])
-
 		} else {
 			doc[ess.timestamp] = time.Now().In(ess.timeZone).Format(time.RFC3339Nano)
 		}

@@ -45,6 +45,7 @@ type PluginRunner struct {
 	senders      	 []sender.Sender
 	Ticker           *time.Ticker
 	BatchCount       int
+	MaxBatchInterval int
 	Cycle			 int
 	PluginConfig	 string
 }
@@ -75,9 +76,9 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 	if rc.MaxBatchInterval <= 0 {
 		rc.MaxBatchInterval = defaultSendIntervalSeconds
 	}
-	if rc.MaxBatchLen > rc.MaxBatchInterval/rc.CollectInterval {
+/*	if rc.MaxBatchLen > rc.MaxBatchInterval/rc.CollectInterval {
 		rc .MaxBatchLen = rc.MaxBatchInterval/rc.CollectInterval
-	}
+	}*/
 	confBytes, err := jsoniter.MarshalIndent(rc.PluginConfig.Config, "", "    ")
 	if err != nil {
 		return nil, fmt.Errorf("plugin config %v marshal failed, err is %v", rc.PluginConfig.Config, err)
@@ -135,6 +136,7 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 		Cycle:			 rc.CollectInterval,
 		Type:    		 plugin.Type,
 		BatchCount:		 rc.MaxBatchLen,
+		MaxBatchInterval:rc.MaxBatchInterval,
 		PluginConfig:	 pluginConfig,
 		transformers:    transformers,
 		senders:         senders,
@@ -148,13 +150,15 @@ func (pr *PluginRunner) Name() string {
 }
 
 func (pr *PluginRunner) Run() {
+	pr.lastSend = time.Now()
 	defer close(pr.exitSuccessChan)
 	datas := make([]Data, 0)
 	for {
 		select {
 		case <- pr.exitChan:
-			log.Debugf("runner %v exited from run", pr.RunnerName)
-			pr.Ticker.Stop()
+			if len(datas) > 0 {
+				pr.batchProcess(datas)
+			}
 			pr.exitSuccessChan <- struct{}{}
 			return
 		case <-pr.Ticker.C:
@@ -163,32 +167,32 @@ func (pr *PluginRunner) Run() {
 				log.Error(err)
 				break
 			}
-			//添加@timestamp字段
-			/*for _, data := range resDatas {
-				if _, exist := data["@timestamp"]; !exist {
-					data["@timestamp"] = time.Now().Format(time.RFC3339Nano)
-				}
-			}*/
 			datas = append(datas, resDatas...)
 			pr.rs.ReadDataCount += int64(len(resDatas))
-			if len(datas)  >= pr.BatchCount {
-				for i := range pr.transformers {
-					if pr.transformers[i].Stage() == transforms.StageAfterParser {
-						datas, err = pr.transformers[i].Transform(datas)
-						if err != nil {
-							log.Error(err)
-						}
-					}
-				}
-				for _, s := range pr.senders {
-					if !pr.trySend(s, datas, 3) {
-						log.Errorf("failed to send metricData: << %v >>", datas)
-					}
-				}
-				datas = make([]Data, 0)
+			if len(datas)  >= pr.BatchCount || time.Now().Sub(pr.lastSend).Seconds() >= float64(pr.MaxBatchInterval) {
+				pr.batchProcess(datas)
 			}
 		}
 	}
+}
+
+func (pr *PluginRunner) batchProcess (datas []Data) {
+	var err error
+	for i := range pr.transformers {
+		if pr.transformers[i].Stage() == transforms.StageAfterParser {
+			datas, err = pr.transformers[i].Transform(datas)
+			if err != nil {
+				log.Error(err)
+			}
+		}
+	}
+	for _, s := range pr.senders {
+		if !pr.trySend(s, datas, 3) {
+			log.Errorf("failed to send metricData: << %v >>", datas)
+		}
+	}
+	datas = make([]Data, 0)
+	pr.lastSend = time.Now()
 }
 
 func (pr *PluginRunner) trySend (s sender.Sender, datas []Data, times int) bool {
