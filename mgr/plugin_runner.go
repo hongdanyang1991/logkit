@@ -25,6 +25,7 @@ type PluginConfig struct {
 	Type       string					`json:"type"`
 	//Cycle	   int						`json:"cycle"`
 	//BatchCount int  					`json:"batchCount"`
+	logPath    string					`json:"log_Path"`
 	Config     map[string]interface{} 	`json:"config,omitempty"`
 }
 
@@ -171,6 +172,7 @@ func (pr *PluginRunner) Run() {
 			pr.rs.ReadDataCount += int64(len(resDatas))
 			if len(datas)  >= pr.BatchCount || time.Now().Sub(pr.lastSend).Seconds() >= float64(pr.MaxBatchInterval) {
 				pr.batchProcess(datas)
+				datas = make([]Data, 0)
 			}
 		}
 	}
@@ -191,7 +193,7 @@ func (pr *PluginRunner) batchProcess (datas []Data) {
 			log.Errorf("failed to send metricData: << %v >>", datas)
 		}
 	}
-	datas = make([]Data, 0)
+	//datas = make([]Data, 0)
 	pr.lastSend = time.Now()
 }
 
