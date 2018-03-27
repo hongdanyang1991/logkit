@@ -25,7 +25,7 @@ type PluginConfig struct {
 	Type       string					`json:"type"`
 	//Cycle	   int						`json:"cycle"`
 	//BatchCount int  					`json:"batchCount"`
-	logPath    string					`json:"log_Path"`
+	LogPath    string					`json:"log_path"`
 	Config     map[string]interface{} 	`json:"config,omitempty"`
 }
 
@@ -49,6 +49,7 @@ type PluginRunner struct {
 	MaxBatchInterval int
 	Cycle			 int
 	PluginConfig	 string
+	logPath			 string
 }
 
 func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *PluginRunner, err error) {
@@ -139,6 +140,7 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 		BatchCount:		 rc.MaxBatchLen,
 		MaxBatchInterval:rc.MaxBatchInterval,
 		PluginConfig:	 pluginConfig,
+		logPath:		 rc.PluginConfig.LogPath,
 		transformers:    transformers,
 		senders:         senders,
 	}
@@ -163,7 +165,7 @@ func (pr *PluginRunner) Run() {
 			pr.exitSuccessChan <- struct{}{}
 			return
 		case <-pr.Ticker.C:
-			resDatas, err := plugin.PluginRun(plugin.Plugins[pr.Type], pr.PluginConfig, pr.Cycle)
+			resDatas, err := plugin.PluginRun(plugin.Plugins[pr.Type], pr.PluginConfig, pr.logPath,  pr.Cycle)
 			if err!= nil {
 				log.Error(err)
 				break
@@ -178,6 +180,8 @@ func (pr *PluginRunner) Run() {
 	}
 }
 
+
+//批处理
 func (pr *PluginRunner) batchProcess (datas []Data) {
 	var err error
 	for i := range pr.transformers {
@@ -193,7 +197,6 @@ func (pr *PluginRunner) batchProcess (datas []Data) {
 			log.Errorf("failed to send metricData: << %v >>", datas)
 		}
 	}
-	//datas = make([]Data, 0)
 	pr.lastSend = time.Now()
 }
 

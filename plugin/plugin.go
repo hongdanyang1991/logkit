@@ -116,7 +116,7 @@ func SyncPlugins() error {
 	return nil
 }
 
-func PluginRun(plugin *Plugin, configFile string, Cycle int) (metrics []Data, err error) {
+func PluginRun(plugin *Plugin, configFile string, logPath string, Cycle int) (metrics []Data, err error) {
 
 	timeout := Cycle * 1000 - 500
 	exePath := filepath.Join(plugin.Path, plugin.ExecFile)
@@ -127,8 +127,13 @@ func PluginRun(plugin *Plugin, configFile string, Cycle int) (metrics []Data, er
 
 	log.Debugf(exePath, " running...")
 
-	cmd := exec.Command(exePath, "-f", configFile)
-	//cmd := exec.Command(exePath)
+	var cmd *exec.Cmd
+	if logPath != "" {
+		cmd = exec.Command(exePath, "-f", configFile, "-l", logPath)
+	} else {
+		cmd = exec.Command(exePath, "-f", configFile)
+	}
+
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	var stderr bytes.Buffer
