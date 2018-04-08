@@ -37,6 +37,12 @@ type ElasticsearchSender struct {
 	timeZone       *time.Location
 	logkitSendTime bool
 	timestamp 	   string
+
+	//工业互联网支持
+	startDate	   time.Time
+	circle         int
+	repeat         int
+	offSet         int
 }
 
 const (
@@ -49,6 +55,13 @@ const (
 	KeyElasticIndexStrategy = "elastic_index_strategy"
 	KeyElasticTimezone      = "elastic_time_zone"
 	keyElasticTimestamp		= "elastic_timestamp"  //指定时间戳字段  1.若为空,则不指定 2.若某条数据不存在该字段,则创建,并以当前时间为value 3.若某条数据存在该字段且无法转换成时间类型,则丢弃该条数据
+
+
+	//工业互联网支持
+	KeyStartDate			= "elastic_start_time" //开始日期
+	KeyCircle				= "elastic_circle"     //周期   单位:天
+	keyRepeatNum			= "elastic_repeat_num" //重复次数
+	keyOffset				= "elastic_offset"     //偏移量 单位: 小时
 )
 
 const (
@@ -79,6 +92,24 @@ const KeySendTime = "sendTime"
 
 // NewElasticSender New ElasticSender
 func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
+
+	//工业互联网支持
+	startDateStr, err := conf.GetString(KeyStartDate)
+	if err != nil {
+		return
+	}
+	startDate, err := times.StrToTime(startDateStr)
+	//startDate, err := time.Parse(time.RFC3339Nano,startDateStr)
+	if err != nil {
+		return
+	}
+
+	circle, err := conf.GetIntOr(KeyCircle, 0)
+
+	repeatNum, err := conf.GetIntOr(keyRepeatNum, 1)
+
+	offSet, err := conf.GetIntOr(keyOffset, 0)
+
 	host, err := conf.GetStringList(KeyElasticHost)
 	if err != nil {
 		return
@@ -162,6 +193,11 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 		timeZone:        timeZone,
 		logkitSendTime:  logkitSendTime,
 		timestamp:		 timestamp,
+		//工业互联网
+		startDate:		 startDate,
+		circle:			 circle,
+		repeat:          repeatNum,
+		offSet:          offSet,
 	}, nil
 }
 
@@ -185,6 +221,13 @@ func (ess *ElasticsearchSender) Name() string {
 
 // Send ElasticSearchSender
 func (ess *ElasticsearchSender) Send(data []Data) (err error) {
+	for i := 0; i < ess.repeat; i ++ {
+		ess.SendOnce(data, i)
+	}
+	return nil
+}
+
+func (ess *ElasticsearchSender) SendOnce(data []Data, i int) (err error) {
 	switch ess.eVersion {
 	case ElasticVersion6:
 		bulkService := ess.elasticV6Client.Bulk()
@@ -197,7 +240,7 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		for _, doc := range data {
 
 			//加工字段
-			if err = processDoc(ess, doc); err != nil {
+			if err = processDoc(ess, doc, i); err != nil {
 				continue
 			}
 			//计算索引
@@ -209,9 +252,9 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 				doc = ess.wrapDoc(doc)
 			}
 			//添加发送时间
-			if ess.logkitSendTime {
+			/*if ess.logkitSendTime {
 				doc[KeySendTime] = time.Now().In(ess.timeZone)
-			}
+			}*/
 			doc2 := doc
 			bulkService.Add(elasticV6.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
 		}
@@ -230,7 +273,7 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		var indexName string
 		for _, doc := range data {
 			//加工字段
-			if err = processDoc(ess, doc); err != nil {
+			if err = processDoc(ess, doc, i); err != nil {
 				continue
 			}
 			//计算索引
@@ -242,9 +285,9 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 				doc = ess.wrapDoc(doc)
 			}
 			//添加发送时间
-			if ess.logkitSendTime {
+			/*if ess.logkitSendTime {
 				doc[KeySendTime] = time.Now().In(ess.timeZone)
-			}
+			}*/
 			doc2 := doc
 			bulkService.Add(elasticV5.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
 		}
@@ -263,7 +306,7 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 		var indexName string
 		for _, doc := range data {
 			//加工字段
-			if err = processDoc(ess, doc); err != nil {
+			if err = processDoc(ess, doc, i); err != nil {
 				continue
 			}
 			//计算索引
@@ -275,9 +318,9 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 				doc = ess.wrapDoc(doc)
 			}
 			//添加发送时间
-			if ess.logkitSendTime {
+			/*if ess.logkitSendTime {
 				doc[KeySendTime] = time.Now().In(ess.timeZone)
-			}
+			}*/
 			doc2 := doc
 			bulkService.Add(elasticV3.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
 		}
@@ -290,7 +333,8 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 	return
 }
 
-func processDoc(ess *ElasticsearchSender, doc Data) error {
+func processDoc(ess *ElasticsearchSender, doc Data, i int) error {
+	var t time.Time
 	if ess.timestamp != "" {
 		if _, ok := doc[ess.timestamp]; ok {
 			//验证是否为日期字符串
@@ -299,14 +343,22 @@ func processDoc(ess *ElasticsearchSender, doc Data) error {
 				if err != nil {
 					return err
 				}
-				doc[ess.timestamp] = timestamp.In(ess.timeZone).Format(time.RFC3339Nano)
+				//doc[ess.timestamp] = timestamp.In(ess.timeZone).Format(time.RFC3339Nano)
+				t = timestamp.In(ess.timeZone)
 			} else {
 				return fmt.Errorf("appointed timestamp field: %v is not type of string", doc[ess.timestamp])
 			}
 		} else {
-			doc[ess.timestamp] = time.Now().In(ess.timeZone).Format(time.RFC3339Nano)
+			//doc[ess.timestamp] = time.Now().In(ess.timeZone).Format(time.RFC3339Nano)
+			t = time.Now().In(ess.timeZone)
 		}
 	}
+	currentDate := time.Date(t.Year(), t.Month(),t.Day(),0, 0, 0,0, ess.timeZone)
+	duration := currentDate.Sub(ess.startDate)
+	t = t.Add(-duration)
+    t = t.Add(time.Hour * 24 * (time.Duration)(i * ess.circle))
+	doc[ess.timestamp] = t.Format(time.RFC3339Nano)
+	doc[KeySendTime] = t.Add(time.Second * 10)
 	return nil
 }
 
