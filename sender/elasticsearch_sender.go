@@ -16,6 +16,7 @@ import (
 	elasticV5 "gopkg.in/olivere/elastic.v5"
 	"github.com/qiniu/logkit/utils"
 	"github.com/qiniu/logkit/times"
+	"math/rand"
 )
 
 // ElasticsearchSender ElasticSearch sender
@@ -43,6 +44,7 @@ type ElasticsearchSender struct {
 	circle         int
 	repeat         int
 	offSet         int
+	IP             string
 }
 
 const (
@@ -62,6 +64,8 @@ const (
 	KeyCircle				= "elastic_circle"     //周期   单位:天
 	keyRepeatNum			= "elastic_repeat_num" //重复次数
 	keyOffset				= "elastic_offset"     //偏移量 单位: 小时
+	keyIP                   = "elastic_ip"         //ip字段名
+	//keyDataSource			= "elastic_data_source"//dataSource字段名
 )
 
 const (
@@ -70,6 +74,9 @@ const (
 	KeyMonthIndexStrategy   = "month"
 	KeyDayIndexStrategy     = "day"
 )
+
+const DataSource = "datasource"
+const Message = "message"
 
 var (
 	// ElasticVersion3 v3.x
@@ -109,6 +116,10 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 	repeatNum, err := conf.GetIntOr(keyRepeatNum, 1)
 
 	offSet, err := conf.GetIntOr(keyOffset, 0)
+
+	IP, err := conf.GetStringOr(keyIP, "clientip")
+
+
 
 	host, err := conf.GetStringList(KeyElasticHost)
 	if err != nil {
@@ -198,6 +209,7 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 		circle:			 circle,
 		repeat:          repeatNum,
 		offSet:          offSet,
+		IP:				 IP,
 	}, nil
 }
 
@@ -333,7 +345,106 @@ func (ess *ElasticsearchSender) SendOnce(data []Data, i int) (err error) {
 	return
 }
 
+var ipList = [][]string{
+	{"58", "50", "", ""},
+	{"58", "60", "", ""},
+	{"58", "33", "", ""},
+	{"59", "155", "", ""},
+	{"60", "247", "", ""},
+	{"116", "1", "", ""},
+	{"116", "2", "", ""},
+	{"116", "3", "", ""},
+	{"116", "4", "", ""},
+	{"116", "5", "", ""},
+	{"116", "6", "", ""},
+	{"116", "7", "", ""},
+	{"116", "8", "", ""},
+	{"121", "4", "", ""},
+	{"121", "5", "", ""},
+	{"121", "8", "", ""},
+	{"121", "9", "", ""},
+	{"121", "10", "", ""},
+	{"121", "11", "", ""},
+	{"121", "12", "", ""},
+	{"121", "13", "", ""},
+	{"121", "14", "", ""},
+	{"121", "15", "", ""},
+	{"121", "16", "", ""},
+	{"121", "59", "", ""},
+	{"121", "62", "", ""},
+	{"121", "68", "", ""},
+	{"122", "4", "", ""},
+	{"122", "51", "", ""},
+	{"123", "4", "", ""},
+	{"110", "96", "", ""},
+	{"218", "246", "", ""},
+	{"121", "89", "", ""},
+	{"116", "85", "", ""},
+	{"211", "81", "", ""},
+	{"124", "192", "", ""},
+	{"118", "190", "", ""},
+	{"211", "100", "", ""},
+	{"124", "74", "", ""},
+	{"124", "75", "", ""},
+	{"218", "1", "", ""},
+	{"61", "152", "", ""},
+	{"61", "170", "", ""},
+	{"116", "246", "", ""},
+}
+
+//映射ip字段
+func mapIp(doc Data, ess *ElasticsearchSender) {
+	rawIp := doc[ess.IP]
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	len := len(ipList)
+	seed := r.Intn(len - 1)
+	ip := ipList[seed]
+	ip[2] = strconv.Itoa(r.Intn(255))
+	ip[3] = strconv.Itoa(r.Intn(255))
+	var ipStr = strings.Join(ip, ".")
+	doc[ess.IP] = ipStr
+	message := doc[Message]
+	if messageStr, ok := message.(string); ok {
+		if rawIpStr, ok := rawIp.(string); ok {
+			message = strings.Replace(messageStr, rawIpStr, ipStr, 1)
+			doc[Message] = message
+		}
+	}
+}
+
+//映射dataSource字段
+func mapDataSource(dataSource string, t time.Time) (string, error){
+	slice := strings.Split(dataSource, ".log")
+	if len(slice) < 1 {
+		return "", fmt.Errorf("error datasource")
+	}
+	slice2 := strings.Split(slice[0], "\\")
+	if len(slice2) < 1 {
+		return "", fmt.Errorf("error datasource")
+	}
+	mdataSource := "/var/log/nginx/" + slice2[len(slice2) - 1] + ".log"
+	/*mdataSource = mdataSource + "-" + strconv.Itoa(t.Year())
+	m := t.Month()
+	if m < 10 {
+		mdataSource = mdataSource + "0" + strconv.Itoa(int(t.Month()))
+	} else {
+		mdataSource = mdataSource + strconv.Itoa(int(t.Month()))
+	}
+	d := t.Day()
+	if d < 10 {
+		mdataSource = mdataSource + "0" + strconv.Itoa(t.Day())
+	} else {
+		mdataSource = mdataSource  + strconv.Itoa(t.Day())
+	}*/
+	return mdataSource, nil
+}
+
+
+
 func processDoc(ess *ElasticsearchSender, doc Data, i int) error {
+	/*if _, ok := doc[ess.IP]; ok {
+		mapIp(doc, ess)
+	}*/
 	var t time.Time
 	if ess.timestamp != "" {
 		if _, ok := doc[ess.timestamp]; ok {
@@ -359,6 +470,11 @@ func processDoc(ess *ElasticsearchSender, doc Data, i int) error {
     t = t.Add(time.Hour * 24 * (time.Duration)(i * ess.circle))
 	doc[ess.timestamp] = t.Format(time.RFC3339Nano)
 	doc[KeySendTime] = t.Add(time.Second * 10)
+	dataSource, err := mapDataSource(DataSource, t)
+	if err != nil {
+		return err
+	}
+	doc[DataSource] = dataSource
 	return nil
 }
 

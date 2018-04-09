@@ -9,6 +9,10 @@ import (
 	. "github.com/qiniu/logkit/utils/models"
 
 	"github.com/wangtuanjie/ip17mon"
+	"strconv"
+	"math/rand"
+	"time"
+	"strings"
 )
 
 //更全的免费数据可以在ipip.net下载
@@ -24,6 +28,73 @@ func (it *IpTransformer) RawTransform(datas []string) ([]string, error) {
 	return datas, errors.New("IP transformer not support rawTransform")
 }
 
+var ipList = [][]string{
+	{"58", "50", "", ""},
+	{"58", "60", "", ""},
+	{"58", "33", "", ""},
+	{"59", "155", "", ""},
+	{"60", "247", "", ""},
+	{"116", "1", "", ""},
+	{"116", "2", "", ""},
+	{"116", "3", "", ""},
+	{"116", "4", "", ""},
+	{"116", "5", "", ""},
+	{"116", "6", "", ""},
+	{"116", "7", "", ""},
+	{"116", "8", "", ""},
+	{"121", "4", "", ""},
+	{"121", "5", "", ""},
+	{"121", "8", "", ""},
+	{"121", "9", "", ""},
+	{"121", "10", "", ""},
+	{"121", "11", "", ""},
+	{"121", "12", "", ""},
+	{"121", "13", "", ""},
+	{"121", "14", "", ""},
+	{"121", "15", "", ""},
+	{"121", "16", "", ""},
+	{"121", "59", "", ""},
+	{"121", "62", "", ""},
+	{"121", "68", "", ""},
+	{"122", "4", "", ""},
+	{"122", "51", "", ""},
+	{"123", "4", "", ""},
+	{"110", "96", "", ""},
+	{"218", "246", "", ""},
+	{"121", "89", "", ""},
+	{"116", "85", "", ""},
+	{"211", "81", "", ""},
+	{"124", "192", "", ""},
+	{"118", "190", "", ""},
+	{"211", "100", "", ""},
+	{"124", "74", "", ""},
+	{"124", "75", "", ""},
+	{"218", "1", "", ""},
+	{"61", "152", "", ""},
+	{"61", "170", "", ""},
+	{"116", "246", "", ""},
+}
+
+//映射ip字段
+func (it *IpTransformer) randomIp(doc Data) {
+	rawIp := doc[it.Key]
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	len := len(ipList)
+	seed := r.Intn(len - 1)
+	ip := ipList[seed]
+	ip[2] = strconv.Itoa(r.Intn(255))
+	ip[3] = strconv.Itoa(r.Intn(255))
+	var ipStr = strings.Join(ip, ".")
+	doc[it.Key] = ipStr
+	message := doc["message"]
+	if messageStr, ok := message.(string); ok {
+		if rawIpStr, ok := rawIp.(string); ok {
+			message = strings.Replace(messageStr, rawIpStr, ipStr, 1)
+			doc["message"] = message
+		}
+	}
+}
+
 func (it *IpTransformer) Transform(datas []Data) ([]Data, error) {
 	var err, ferr error
 	if it.loc == nil {
@@ -36,6 +107,12 @@ func (it *IpTransformer) Transform(datas []Data) ([]Data, error) {
 	keys := utils.GetKeys(it.Key)
 	newkeys := make([]string, len(keys))
 	for i := range datas {
+		//工业互联网 内置
+		if _, ok := datas[i][it.Key]; ok {
+			it.randomIp(datas[i])
+		}
+
+
 		copy(newkeys, keys)
 		val, gerr := utils.GetMapValue(datas[i], keys...)
 		if gerr != nil {
