@@ -17,6 +17,7 @@ import (
 	"github.com/qiniu/logkit/utils"
 	"github.com/qiniu/logkit/times"
 	"math/rand"
+	"encoding/json"
 )
 
 // ElasticsearchSender ElasticSearch sender
@@ -233,8 +234,13 @@ func (ess *ElasticsearchSender) Name() string {
 
 // Send ElasticSearchSender
 func (ess *ElasticsearchSender) Send(data []Data) (err error) {
+
 	for i := 0; i < ess.repeat; i ++ {
-		ess.SendOnce(data, i)
+		dataStr, _ := json.Marshal(data)
+		var data2 = []Data{}
+		json.Unmarshal(dataStr, &data2)
+		//data2 := utils.DeepCopy(data).([]Data)
+		ess.SendOnce(data2, i)
 	}
 	return nil
 }
@@ -418,12 +424,12 @@ func mapDataSource(dataSource string, t time.Time) (string, error){
 	if len(slice) < 1 {
 		return "", fmt.Errorf("error datasource")
 	}
-	slice2 := strings.Split(slice[0], "\\")
+	/*slice2 := strings.Split(slice[0], "\\")
 	if len(slice2) < 1 {
 		return "", fmt.Errorf("error datasource")
 	}
 	mdataSource := "/var/log/nginx/" + slice2[len(slice2) - 1] + ".log"
-	/*mdataSource = mdataSource + "-" + strconv.Itoa(t.Year())
+	mdataSource = mdataSource + "-" + strconv.Itoa(t.Year())
 	m := t.Month()
 	if m < 10 {
 		mdataSource = mdataSource + "0" + strconv.Itoa(int(t.Month()))
@@ -436,6 +442,7 @@ func mapDataSource(dataSource string, t time.Time) (string, error){
 	} else {
 		mdataSource = mdataSource  + strconv.Itoa(t.Day())
 	}*/
+	mdataSource := slice[0] + ".log"
 	return mdataSource, nil
 }
 
@@ -470,11 +477,24 @@ func processDoc(ess *ElasticsearchSender, doc Data, i int) error {
     t = t.Add(time.Hour * 24 * (time.Duration)(i * ess.circle))
 	doc[ess.timestamp] = t.Format(time.RFC3339Nano)
 	doc[KeySendTime] = t.Add(time.Second * 10)
-	dataSource, err := mapDataSource(DataSource, t)
-	if err != nil {
-		return err
+	if datasource, ok := doc[DataSource].(string); ok {
+		dataSource, err := mapDataSource(datasource, t)
+		if err != nil {
+			return err
+		}
+		doc[DataSource] = dataSource
 	}
-	doc[DataSource] = dataSource
+	prc, _ := time.LoadLocation("PRC")
+	timeStr := t.In(prc).Format(time.RFC3339)
+	if message, ok := doc[Message].(string); ok {
+		if rawTime, ok := doc["rawTime"].(string); ok {
+			doc[Message] = strings.Replace(message, rawTime, timeStr, 10)
+		}
+
+	}
+
+	//delete(doc, "rawTime")
+
 	return nil
 }
 

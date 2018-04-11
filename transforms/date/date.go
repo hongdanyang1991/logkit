@@ -32,6 +32,7 @@ func (g *DateTrans) Transform(datas []Data) ([]Data, error) {
 	keys := utils.GetKeys(g.Key)
 	for i := range datas {
 		val, err := utils.GetMapValue(datas[i], keys...)
+		datas[i]["rawTime"] = val
 		if err != nil {
 			errnums++
 			err = fmt.Errorf("transform key %v not exist in data", g.Key)

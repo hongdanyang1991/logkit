@@ -1,6 +1,6 @@
 package ip
 
-import (
+ import (
 	"errors"
 	"fmt"
 
@@ -21,6 +21,7 @@ type IpTransformer struct {
 	StageTime string `json:"stage"`
 	Key       string `json:"key"`
 	DataPath  string `json:"data_path"`
+	IpList    [][]string `json:"ip_list"`
 	db        *geoip2.Reader
 	stats     utils.StatsInfo
 }
@@ -89,9 +90,9 @@ var ipList = [][]string{
 func (it *IpTransformer) randomIp(doc Data) {
 	rawIp := doc[it.Key]
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	len := len(ipList)
+	len := len(it.IpList)
 	seed := r.Intn(len - 1)
-	ip := ipList[seed]
+	ip := it.IpList[seed]
 	ip[2] = strconv.Itoa(r.Intn(255))
 	ip[3] = strconv.Itoa(r.Intn(255))
 	var ipStr = strings.Join(ip, ".")
