@@ -30,6 +30,8 @@ const (
 	KeyKafkaCompressionSnappy = "snappy"
 )
 
+const defaultVersion = "0.8.2.0"
+
 const (
 	KeyKafkaHost     = "kafka_host"      //主机地址,可以有多个
 	KeyKafkaTopic    = "kafka_topic"     //topic 1.填一个值,则topic为所填值 2.填两个值: %{[字段名]}, defaultTopic :根据每条event,以指定字段值为topic,若无,则用默认值
@@ -41,6 +43,7 @@ const (
 	KeyKafkaTimeout     = "kafka_timeout"     //连接超时时间
 	KeyKafkaKeepAlive   = "kafka_keep_alive"  //保持连接时长
 	KeyMaxMessageBytes  = "max_message_bytes" //每条消息最大字节数
+	KeyKafkaVersion     = "kafka_version"	  //kafka version
 )
 
 var (
@@ -79,6 +82,7 @@ func NewKafkaSender(conf conf.MapConf) (sender Sender, err error) {
 	maxMessageBytes, _ := conf.GetIntOr(KeyMaxMessageBytes, 4*1024*1024)
 
 	name, _ := conf.GetStringOr(KeyName, fmt.Sprintf("kafkaSender:(kafkaUrl:%s,topic:%s)", hosts, topic))
+	version, _ := conf.GetStringOr(KeyKafkaVersion, defaultVersion)
 	cfg := sarama.NewConfig()
 	cfg.Producer.Return.Successes = true
 	cfg.Producer.Return.Errors = true
@@ -105,6 +109,13 @@ func NewKafkaSender(conf conf.MapConf) (sender Sender, err error) {
 		return
 	}
 	cfg.Producer.MaxMessageBytes = maxMessageBytes
+	versionMap := kafkaVersion()
+	if v, ok := versionMap[version]; ok {
+		cfg.Version = v
+	} else {
+		cfg.Version = versionMap[defaultVersion]
+		log.Debugf("kafka version config error, use default version : %v", defaultVersion)
+	}
 
 	producer, err := sarama.NewSyncProducer(hosts, cfg)
 	if err != nil {
@@ -114,6 +125,20 @@ func NewKafkaSender(conf conf.MapConf) (sender Sender, err error) {
 	sender = newKafkaSender(name, hosts, topic, cfg, producer)
 	return
 }
+func kafkaVersion() map[string]sarama.KafkaVersion {
+	m := make(map[string]sarama.KafkaVersion)
+	m["0.8.2.0"] = sarama.V0_8_2_0
+	m["0.8.2.1"] = sarama.V0_8_2_1
+	m["0.8.2.2"] = sarama.V0_8_2_2
+	m["0.9.0.0"] = sarama.V0_9_0_0
+	m["0.9.0.1"] = sarama.V0_9_0_1
+	m["0.10.0.0"] = sarama.V0_10_0_0
+	m["0.10.0.1"] = sarama.V0_10_0_1
+	m["0.10.1.0"] = sarama.V0_10_1_0
+	m["0.10.2.0"] = sarama.V0_10_2_0
+	return m
+}
+
 
 func newKafkaSender(name string, hosts []string, topic []string, cfg *sarama.Config, producer sarama.SyncProducer) (k *KafkaSender) {
 	k = &KafkaSender{

@@ -600,6 +600,13 @@ var ModeKeyOptions = map[string][]Option{
 			Description:  "打点的topic名称(kafka_topic)",
 		},
 		{
+			KeyName:      KeyKafkaVersion,
+			ChooseOnly:   false,
+			Default:      defaultVersion,
+			DefaultNoUse: true,
+			Description:  "kafka版本",
+		},
+		{
 			KeyName:       KeyKafkaCompression,
 			ChooseOnly:    true,
 			ChooseOptions: []interface{}{KeyKafkaCompressionNone, KeyKafkaCompressionGzip, KeyKafkaCompressionSnappy},
