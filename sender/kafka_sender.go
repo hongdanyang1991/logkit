@@ -36,7 +36,7 @@ const (
 	KeyKafkaHost     = "kafka_host"      //主机地址,可以有多个
 	KeyKafkaTopic    = "kafka_topic"     //topic 1.填一个值,则topic为所填值 2.填两个值: %{[字段名]}, defaultTopic :根据每条event,以指定字段值为topic,若无,则用默认值
 	KeyKafkaClientId = "kafka_client_id" //客户端ID
-	KeyKafkaFlushNum = "kafka_flush_num"				//缓冲条数
+	KeyKafkaMaxFlushNum = "kafka_max_flush_num"			//最大缓冲条数(当一个请求数据大小超过kafka限制时,将会发送失败)
 	KeyKafkaFlushFrequency = "kafka_flush_frequency"	//缓冲频率
 	KeyKafkaRetryMax    = "kafka_retry_max"   //最大重试次数
 	KeyKafkaCompression = "kafka_compression" //压缩模式,有none, gzip, snappy
@@ -73,7 +73,7 @@ func NewKafkaSender(conf conf.MapConf) (sender Sender, err error) {
 		err = nil
 	}
 	clientID, _ := conf.GetStringOr(KeyKafkaClientId, hostName)
-	num, _ := conf.GetIntOr(KeyKafkaFlushNum, 100)
+	maxBathNum, _ := conf.GetIntOr(KeyKafkaMaxFlushNum, 500)
 	frequency, _ := conf.GetIntOr(KeyKafkaFlushFrequency, 5)
 	retryMax, _ := conf.GetIntOr(KeyKafkaRetryMax, 3)
 	compression, _ := conf.GetStringOr(KeyKafkaCompression, KeyKafkaCompressionNone)
@@ -91,7 +91,7 @@ func NewKafkaSender(conf conf.MapConf) (sender Sender, err error) {
 	//客户端ID
 	cfg.ClientID = clientID
 	//批量发送条数
-	cfg.Producer.Flush.Messages = num
+	cfg.Producer.Flush.MaxMessages = maxBathNum
 	//批量发送间隔
 	cfg.Producer.Flush.Frequency =  time.Duration(frequency) * time.Second
 	cfg.Producer.Retry.Max = retryMax

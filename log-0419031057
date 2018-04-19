@@ -1,0 +1,22 @@
+2018/04/19 15:10:57 [WARN][github.com/qiniu/logkit/mgr] mgr.go:426: start to add watcher of conf path E:\Go\GOPATH\src\github.com\qiniu\logkit\confs
+2018/04/19 15:10:57 [WARN][github.com/qiniu/logkit/mgr] mgr.go:200: E:\Go\GOPATH\src\github.com\qiniu\logkit\.logkitconfs\runner-8.conf.bak not end with .conf, skipped
+2018/04/19 15:10:57 [INFO][github.com/qiniu/logkit/mgr] mgr.go:203: try add E:\Go\GOPATH\src\github.com\qiniu\logkit\.logkitconfs\runner.20180419143252.conf
+2018/04/19 15:10:57 [INFO][github.com/qiniu/logkit/mgr] mgr.go:221: Start to try add: runner.20180419143252
+2018/04/19 15:10:57 [INFO][github.com/qiniu/logkit/mgr] mgr.go:203: try add E:\Go\GOPATH\src\github.com\qiniu\logkit\.logkitconfs\runner.20180419143833.conf
+2018/04/19 15:10:57 [INFO][github.com/qiniu/logkit/mgr] mgr.go:221: Start to try add: runner.20180419143833
+2018/04/19 15:10:57 [INFO][github.com/qiniu/logkit/mgr] mgr.go:476: successfully restored 3 runners in E:\Go\GOPATH\src\github.com\qiniu\logkit/.logkitconfs web rest dir
+2018/04/19 15:10:57 [WARN][github.com/qiniu/logkit/reader] singlefile.go:84: Runner[runner.20180419143833] meta\runner.20180419143833_2378352717\file.meta -meta file <> is not current file <C:\logs2\test.log>， omit meta data
+2018/04/19 15:10:57 [WARN][github.com/qiniu/logkit/reader] singlefile.go:84: Runner[runner.20180419143252] meta\runner.20180419143252_1732032901\file.meta -meta file <> is not current file <D:\testJson.txt>， omit meta data
+2018/04/19 15:10:57 [INFO][github.com/qiniu/logkit/mgr] rest.go:166: successfully start RestService and bind address on :3000
+2018/04/19 15:10:57 [WARN][github.com/qiniu/logkit/sender] sender_router.go:54: route key name is empty, ignored it
+2018/04/19 15:10:57 [WARN][github.com/qiniu/logkit/mgr] runner.go:203: runner.20180419143252's cleaner was disabled
+2018/04/19 15:10:57 [WARN][github.com/qiniu/logkit/mgr] runner.go:891: runner runner.20180419143252, restore status failed
+2018/04/19 15:10:57 [INFO][github.com/qiniu/logkit/mgr] mgr.go:286: Runner[runner.20180419143252] added: "E:\\Go\\GOPATH\\src\\github.com\\qiniu\\logkit\\.logkitconfs\\runner.20180419143252.conf"
+2018/04/19 15:10:57 [INFO][github.com/qiniu/logkit/mgr] mgr.go:290: new Runner[runner.20180419143252] is added, total 1
+2018/04/19 15:10:57 [WARN][github.com/qiniu/logkit/sender] sender_router.go:54: route key name is empty, ignored it
+2018/04/19 15:10:57 [WARN][github.com/qiniu/logkit/mgr] runner.go:203: runner.20180419143833's cleaner was disabled
+2018/04/19 15:10:57 [WARN][github.com/qiniu/logkit/mgr] runner.go:891: runner runner.20180419143833, restore status failed
+2018/04/19 15:10:57 [INFO][github.com/qiniu/logkit/mgr] mgr.go:286: Runner[runner.20180419143833] added: "E:\\Go\\GOPATH\\src\\github.com\\qiniu\\logkit\\.logkitconfs\\runner.20180419143833.conf"
+2018/04/19 15:10:57 [INFO][github.com/qiniu/logkit/mgr] mgr.go:290: new Runner[runner.20180419143833] is added, total 2
+2018/04/19 15:11:03 [ERROR][github.com/qiniu/logkit/utils] utils.go:149: 1 parse line errors occured, same as Runner[runner.20180419143252] parser pandora.parser.20180419143223 error : parse json line error ReadMapCB: expect { or n, but found �, error found in #1 byte of ...|﻿{"name":|..., bigger context ...|﻿{"name": "BeJson","json":"{\"name\":\"小明\",\|..., raw data is: ﻿{"name": "BeJson","json":"{\"name\":\"小明\",\"age\":18}","d":"Nov 13 07:01:01","logLevel":"w","timestamp": "2017-12-27 09:08:19.5058888","url": "http://www.bejson.com","page": "88","number":99, "isNonProfit": true,"address": {"street": "科技园路.","city": "江苏苏州","country": "中国", "ip": "111.2.3.4"},"links": [{"name": "Google","url": "http://www.google.com"},{"name": "Baidu","url": "http://www.baidu.com"},{"name": "SoSo","url": "http://www.SoSo.com"}]}
+ 
