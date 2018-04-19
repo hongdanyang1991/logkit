@@ -124,6 +124,7 @@ const (
 	KeyMongoCert        = "mongo_cacert"
 
 	KeyKafkaGroupID          = "kafka_groupid"
+	KeyKafkaVersion          = "kafka_version"
 	KeyKafkaTopic            = "kafka_topic"
 	KeyKafkaZookeeper        = "kafka_zookeeper"
 	KeyKafkaZookeeperChroot  = "kafka_zookeeper_chroot"
@@ -266,6 +267,8 @@ func NewFileBufReaderWithMeta(conf conf.MapConf, meta *Meta, isFromWeb bool) (re
 		if err != nil {
 			return nil, err
 		}
+		version, err := conf.GetStringOr(KeyKafkaVersion, defaultVersion)
+
 		topics, err := conf.GetStringList(KeyKafkaTopic)
 		if err != nil {
 			return nil, err
@@ -277,7 +280,7 @@ func NewFileBufReaderWithMeta(conf conf.MapConf, meta *Meta, isFromWeb bool) (re
 			return nil, err
 		}
 		zkchroot, _ := conf.GetStringOr(KeyKafkaZookeeperChroot, "")
-		reader, err = NewKafkaReader(meta, consumerGroup, topics, zookeepers, zkchroot, time.Duration(zkTimeout)*time.Second, whence)
+		reader, err = NewKafkaReader(meta, consumerGroup, topics, zookeepers, zkchroot, time.Duration(zkTimeout)*time.Second, whence, version)
 	case ModeRedis:
 		reader, err = NewRedisReader(meta, conf)
 	case ModeSocket:

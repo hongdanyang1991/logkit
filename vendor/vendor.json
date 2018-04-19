@@ -3,14 +3,6 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "50/2Bv2EHsoyhrd7ddZKIFMIkoo=",
-			"path": "github.com/Shopify/sarama",
-			"revision": "c01858abb625b73a3af51d0798e4ad42c8147093",
-			"revisionTime": "2017-05-08T18:36:27Z",
-			"version": "v1.12.0",
-			"versionExact": "v1.12.0"
-		},
-		{
 			"checksumSHA1": "qtjd74+bErubh+qyv3s+lWmn9wc=",
 			"path": "github.com/StackExchange/wmi",
 			"revision": "ea383cf3ba6ec950874b8486cd72356d007c768f",

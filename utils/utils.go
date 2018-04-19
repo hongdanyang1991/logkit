@@ -29,6 +29,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/json-iterator/go"
+	"github.com/Shopify/sarama"
 )
 
 type File struct {
@@ -683,3 +684,23 @@ func Hash(s string) string {
 	h.Write([]byte(s))
 	return strconv.Itoa(int(h.Sum32()))
 }
+
+func KafkaVersion() map[string]sarama.KafkaVersion {
+	m := make(map[string]sarama.KafkaVersion)
+	m["0.8.2.0"] = sarama.V0_8_2_0
+	m["0.8.2.1"] = sarama.V0_8_2_1
+	m["0.8.2.2"] = sarama.V0_8_2_2
+	m["0.9.0.0"] = sarama.V0_9_0_0
+	m["0.9.0.1"] = sarama.V0_9_0_1
+	m["0.10.0.0"] = sarama.V0_10_0_0
+	m["0.10.0.1"] = sarama.V0_10_0_1
+	m["0.10.1.0"] = sarama.V0_10_1_0
+	m["0.10.2.0"] = sarama.V0_10_2_0
+	m["0.11.0.0"] = sarama.V0_11_0_0
+	m["0.11.0.1"] = sarama.V0_11_0_1
+	m["0.11.0.2"] = sarama.V0_11_0_2
+	m["1.0.0.0"] = sarama.V1_0_0_0
+	m["1.1.0.0"] = sarama.V1_1_0_0
+	return m
+}
+

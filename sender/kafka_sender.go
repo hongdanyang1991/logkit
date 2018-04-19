@@ -36,8 +36,8 @@ const (
 	KeyKafkaHost     = "kafka_host"      //主机地址,可以有多个
 	KeyKafkaTopic    = "kafka_topic"     //topic 1.填一个值,则topic为所填值 2.填两个值: %{[字段名]}, defaultTopic :根据每条event,以指定字段值为topic,若无,则用默认值
 	KeyKafkaClientId = "kafka_client_id" //客户端ID
-	//KeyKafkaFlushNum = "kafka_flush_num"				//缓冲条数
-	//KeyKafkaFlushFrequency = "kafka_flush_frequency"	//缓冲频率
+	KeyKafkaFlushNum = "kafka_flush_num"				//缓冲条数
+	KeyKafkaFlushFrequency = "kafka_flush_frequency"	//缓冲频率
 	KeyKafkaRetryMax    = "kafka_retry_max"   //最大重试次数
 	KeyKafkaCompression = "kafka_compression" //压缩模式,有none, gzip, snappy
 	KeyKafkaTimeout     = "kafka_timeout"     //连接超时时间
@@ -73,13 +73,13 @@ func NewKafkaSender(conf conf.MapConf) (sender Sender, err error) {
 		err = nil
 	}
 	clientID, _ := conf.GetStringOr(KeyKafkaClientId, hostName)
-	//num, _ := conf.GetIntOr(KeyKafkaFlushNum, 200)
-	//frequency, _ := conf.GetIntOr(KeyKafkaFlushFrequency, 5)
+	num, _ := conf.GetIntOr(KeyKafkaFlushNum, 100)
+	frequency, _ := conf.GetIntOr(KeyKafkaFlushFrequency, 5)
 	retryMax, _ := conf.GetIntOr(KeyKafkaRetryMax, 3)
 	compression, _ := conf.GetStringOr(KeyKafkaCompression, KeyKafkaCompressionNone)
 	timeout, _ := conf.GetStringOr(KeyKafkaTimeout, "30s")
 	keepAlive, _ := conf.GetStringOr(KeyKafkaKeepAlive, "0")
-	maxMessageBytes, _ := conf.GetIntOr(KeyMaxMessageBytes, 4*1024*1024)
+	maxMessageBytes, _ := conf.GetIntOr(KeyMaxMessageBytes, 100*1024*1024)
 
 	name, _ := conf.GetStringOr(KeyName, fmt.Sprintf("kafkaSender:(kafkaUrl:%s,topic:%s)", hosts, topic))
 	version, _ := conf.GetStringOr(KeyKafkaVersion, defaultVersion)
@@ -91,9 +91,9 @@ func NewKafkaSender(conf conf.MapConf) (sender Sender, err error) {
 	//客户端ID
 	cfg.ClientID = clientID
 	//批量发送条数
-	//cfg.Producer.Flush.Messages = num
+	cfg.Producer.Flush.Messages = num
 	//批量发送间隔
-	//cfg.Producer.Flush.Frequency =  time.Duration(frequency) * time.Second
+	cfg.Producer.Flush.Frequency =  time.Duration(frequency) * time.Second
 	cfg.Producer.Retry.Max = retryMax
 	compressionMode, ok := compressionModes[strings.ToLower(compression)]
 	if !ok {
@@ -109,7 +109,8 @@ func NewKafkaSender(conf conf.MapConf) (sender Sender, err error) {
 		return
 	}
 	cfg.Producer.MaxMessageBytes = maxMessageBytes
-	versionMap := kafkaVersion()
+
+	versionMap := utils.KafkaVersion()
 	if v, ok := versionMap[version]; ok {
 		cfg.Version = v
 	} else {
@@ -124,19 +125,6 @@ func NewKafkaSender(conf conf.MapConf) (sender Sender, err error) {
 
 	sender = newKafkaSender(name, hosts, topic, cfg, producer)
 	return
-}
-func kafkaVersion() map[string]sarama.KafkaVersion {
-	m := make(map[string]sarama.KafkaVersion)
-	m["0.8.2.0"] = sarama.V0_8_2_0
-	m["0.8.2.1"] = sarama.V0_8_2_1
-	m["0.8.2.2"] = sarama.V0_8_2_2
-	m["0.9.0.0"] = sarama.V0_9_0_0
-	m["0.9.0.1"] = sarama.V0_9_0_1
-	m["0.10.0.0"] = sarama.V0_10_0_0
-	m["0.10.0.1"] = sarama.V0_10_0_1
-	m["0.10.1.0"] = sarama.V0_10_1_0
-	m["0.10.2.0"] = sarama.V0_10_2_0
-	return m
 }
 
 

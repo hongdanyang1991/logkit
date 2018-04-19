@@ -16,9 +16,12 @@ import (
 	"github.com/wvanbergen/kafka/consumergroup"
 )
 
+const defaultVersion  = "0.8.2.0"
+
 type KafkaReader struct {
 	meta             *Meta
 	ConsumerGroup    string
+	version          string
 	Topics           []string
 	ZookeeperPeers   []string
 	ZookeeperChroot  string
@@ -43,7 +46,7 @@ type KafkaReader struct {
 }
 
 func NewKafkaReader(meta *Meta, consumerGroup string,
-	topics []string, zookeeper []string, zkchroot string, zookeeperTimeout time.Duration, whence string) (kr *KafkaReader, err error) {
+	topics []string, zookeeper []string, zkchroot string, zookeeperTimeout time.Duration, whence string, version string) (kr *KafkaReader, err error) {
 	offsets := make(map[string]map[int32]int64)
 	for _, v := range topics {
 		offsets[v] = make(map[int32]int64)
@@ -51,6 +54,7 @@ func NewKafkaReader(meta *Meta, consumerGroup string,
 	kr = &KafkaReader{
 		meta:             meta,
 		ConsumerGroup:    consumerGroup,
+		version:          version,
 		ZookeeperPeers:   zookeeper,
 		ZookeeperTimeout: zookeeperTimeout,
 		ZookeeperChroot:  zkchroot,
@@ -121,6 +125,7 @@ func (kr *KafkaReader) SyncMeta() {
 	return
 }
 
+
 func (kr *KafkaReader) Start() {
 	kr.startMux.Lock()
 	defer kr.startMux.Unlock()
@@ -128,6 +133,14 @@ func (kr *KafkaReader) Start() {
 		return
 	}
 	config := consumergroup.NewConfig()
+	//kafka version
+	versions := utils.KafkaVersion()
+	if v, ok := versions[kr.version]; ok {
+		config.Version = v
+	} else {
+		config.Version = versions[defaultVersion]
+		log.Debugf("kafka version config error, use default version : %v", defaultVersion)
+	}
 	config.Zookeeper.Chroot = kr.ZookeeperChroot
 	config.Zookeeper.Timeout = kr.ZookeeperTimeout
 	switch strings.ToLower(kr.Whence) {
