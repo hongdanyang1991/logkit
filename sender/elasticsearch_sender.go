@@ -14,7 +14,6 @@ import (
 	elasticV6 "github.com/olivere/elastic"
 	elasticV3 "gopkg.in/olivere/elastic.v3"
 	elasticV5 "gopkg.in/olivere/elastic.v5"
-	"github.com/qiniu/logkit/utils"
 	"github.com/qiniu/logkit/times"
 )
 
@@ -94,7 +93,7 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 		return
 	}
 
-	index, err = utils.ExtractField(index)
+	index, err = ExtractField(index)
 	if err != nil {
 		return
 	}

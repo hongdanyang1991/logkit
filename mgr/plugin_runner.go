@@ -7,7 +7,6 @@ import (
 	"sync"
 	"github.com/qiniu/logkit/sender"
 	"github.com/qiniu/logkit/reader"
-	"github.com/qiniu/logkit/utils"
 	"fmt"
 	"github.com/qiniu/logkit/conf"
 	. "github.com/qiniu/logkit/utils/models"
@@ -36,8 +35,8 @@ type PluginRunner struct {
 	Type			 string
 	transformers 	 []transforms.Transformer
 	meta             *reader.Meta
-	rs               RunnerStatus
-	lastRs           RunnerStatus
+	rs               *RunnerStatus
+	lastRs           *RunnerStatus
 	rsMutex          *sync.RWMutex
 	lastSend         time.Time
 	stopped          int32
@@ -54,11 +53,15 @@ type PluginRunner struct {
 
 func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *PluginRunner, err error) {
 	//meta
-	meta, err := reader.NewMetaWithConf(conf.MapConf{
+	cf := conf.MapConf{
 		GlobalKeyName:  rc.RunnerName,
-		reader.KeyRunnerName: rc.RunnerName,
-		reader.KeyMode:       reader.ModeMetrics,
-	})
+		KeyRunnerName:  rc.RunnerName,
+		reader.KeyMode: reader.ModeMetrics,
+	}
+	if rc.ExtraInfo {
+		cf[ExtraInfo] = Bool2String(rc.ExtraInfo)
+	}
+	meta, err := reader.NewMetaWithConf(cf)
 	if err != nil {
 		return nil, fmt.Errorf("Runner "+rc.RunnerName+" add failed, err is %v", err)
 	}
@@ -104,7 +107,7 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 	transformers := createTransformers(rc)
 	//sender
 	for i := range rc.SenderConfig {
-		rc.SenderConfig[i][sender.KeyRunnerName] = rc.RunnerName
+		rc.SenderConfig[i][KeyRunnerName] = rc.RunnerName
 	}
 	senders := make([]sender.Sender, 0)
 	for _, c := range rc.SenderConfig {
@@ -121,16 +124,16 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 		exitSuccessChan:	make(chan struct{}),
 		lastSend:   time.Now(), // 上一次发送时间
 		meta:       meta,
-		rs: RunnerStatus{
-			ReaderStats:   utils.StatsInfo{},
-			SenderStats:   make(map[string]utils.StatsInfo),
+		rs: &RunnerStatus{
+			ReaderStats:   StatsInfo{},
+			SenderStats:   make(map[string]StatsInfo),
 			lastState:     time.Now(),
 			Name:          rc.RunnerName,
 			RunningStatus: RunnerRunning,
 		},
-		lastRs: RunnerStatus{
-			ReaderStats:   utils.StatsInfo{},
-			SenderStats:   make(map[string]utils.StatsInfo),
+		lastRs: &RunnerStatus{
+			ReaderStats:   StatsInfo{},
+			SenderStats:   make(map[string]StatsInfo),
 			lastState:     time.Now(),
 			Name:          rc.RunnerName,
 			RunningStatus: RunnerRunning,
@@ -215,7 +218,7 @@ func (pr *PluginRunner) trySend (s sender.Sender, datas []Data, times int) bool 
 		return true
 	}
 	if _, ok := pr.rs.SenderStats[s.Name()]; !ok {
-		pr.rs.SenderStats[s.Name()] = utils.StatsInfo{}
+		pr.rs.SenderStats[s.Name()] = StatsInfo{}
 	}
 	pr.rsMutex.RLock()
 	info := pr.rs.SenderStats[s.Name()]
@@ -227,10 +230,10 @@ func (pr *PluginRunner) trySend (s sender.Sender, datas []Data, times int) bool 
 			return false
 		}
 		err := s.Send(datas)
-		if se, ok := err.(*utils.StatsError); ok {
+		if se, ok := err.(*StatsError); ok {
 			err = se.ErrorDetail
 			if se.Ft {
-				pr.rs.Lag.Ftlags = se.Ftlag
+				pr.rs.Lag.Ftlags = se.FtQueueLag
 			} else {
 				if cnt > 1 {
 					info.Errors -= se.Success
@@ -314,8 +317,7 @@ func (pr *PluginRunner) getStatusFrequently(rss *RunnerStatus, now time.Time) (b
 	pr.rsMutex.RLock()
 	defer pr.rsMutex.RUnlock()
 	elaspedTime := now.Sub(pr.rs.lastState).Seconds()
-	if elaspedTime <= float64(pr.Cycle * 2) {
-		deepCopy(rss, &pr.rs)
+	if elaspedTime <= 3 {
 		return true, elaspedTime
 	}
 	return false, elaspedTime
@@ -348,13 +350,12 @@ func (pr *PluginRunner) Status() RunnerStatus {
 		if lv, ok := pr.lastRs.SenderStats[k]; ok {
 			v.Speed, v.Trend = calcSpeedTrend(lv, v, durationTime)
 		} else {
-			v.Speed, v.Trend = calcSpeedTrend(utils.StatsInfo{}, v, durationTime)
+			v.Speed, v.Trend = calcSpeedTrend(StatsInfo{}, v, durationTime)
 		}
 		pr.rs.SenderStats[k] = v
 	}
 	pr.rs.RunningStatus = RunnerRunning
-	copyRunnerStatus(&pr.lastRs, &pr.rs)
-	deepCopy(&rss, &pr.rs)
+	*pr.lastRs = pr.rs.Clone()
 	return rss
 }
 
@@ -376,20 +377,20 @@ func (pr *PluginRunner) StatusRestore() {
 		}
 		sStatus, ok := s.(sender.StatsSender)
 		if ok {
-			sStatus.Restore(&utils.StatsInfo{
+			sStatus.Restore(&StatsInfo{
 				Success: info[0],
 				Errors:  info[1],
 			})
 		}
 		status, ext := pr.rs.SenderStats[name]
 		if !ext {
-			status = utils.StatsInfo{}
+			status = StatsInfo{}
 		}
 		status.Success = info[0]
 		status.Errors = info[1]
 		pr.rs.SenderStats[name] = status
 	}
-	copyRunnerStatus(&pr.lastRs, &pr.rs)
+	*pr.lastRs = pr.rs.Clone()
 	log.Infof("runner %v restore status %v", pr.RunnerName, rStat)
 }
 
