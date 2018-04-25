@@ -79,7 +79,7 @@ func NewKafkaSender(conf conf.MapConf) (sender Sender, err error) {
 	compression, _ := conf.GetStringOr(KeyKafkaCompression, KeyKafkaCompressionNone)
 	timeout, _ := conf.GetStringOr(KeyKafkaTimeout, "30s")
 	keepAlive, _ := conf.GetStringOr(KeyKafkaKeepAlive, "0")
-	maxMessageBytes, _ := conf.GetIntOr(KeyMaxMessageBytes, 100*1024*1024)
+	maxMessageBytes, _ := conf.GetIntOr(KeyMaxMessageBytes, 1*1024*1024)
 
 	name, _ := conf.GetStringOr(KeyName, fmt.Sprintf("kafkaSender:(kafkaUrl:%s,topic:%s)", hosts, topic))
 	version, _ := conf.GetStringOr(KeyKafkaVersion, defaultVersion)

@@ -64,12 +64,13 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 	}
 
 	//plugin
-	plugin := plugin.Plugins[rc.PluginConfig.Type]
-	if plugin == nil {
+	plugin.Lock.RLock()
+	p := plugin.Plugins[rc.PluginConfig.Type]
+	if p == nil {
 		return nil, fmt.Errorf("no such type of %v plugin", rc.PluginConfig.Type)
 	}
 	if rc.CollectInterval <= 0 {
-		rc.CollectInterval = plugin.DefaultCycle
+		rc.CollectInterval = p.DefaultCycle
 	}
 	ticker := time.NewTicker(time.Duration(rc.CollectInterval) * time.Second)
 	if rc.MaxBatchLen <= 0 {
@@ -85,7 +86,8 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 	if err != nil {
 		return nil, fmt.Errorf("plugin config %v marshal failed, err is %v", rc.PluginConfig.Config, err)
 	}
-	pluginConfigDir := filepath.Join(plugin.Path, plugin.ConfDir)
+	pluginConfigDir := filepath.Join(p.Path, p.ConfDir)
+	plugin.Lock.RUnlock()
 	pluginConfigFile := rc.RunnerName + ".conf"
 	if _,err := os.Stat(pluginConfigDir); err != nil {
 		if os.IsNotExist(err) {
@@ -136,7 +138,7 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 		rsMutex:         new(sync.RWMutex),
 		Ticker:			 ticker,
 		Cycle:			 rc.CollectInterval,
-		Type:    		 plugin.Type,
+		Type:    		 rc.PluginConfig.Type,
 		BatchCount:		 rc.MaxBatchLen,
 		MaxBatchInterval:rc.MaxBatchInterval,
 		PluginConfig:	 pluginConfig,
@@ -145,6 +147,7 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 		senders:         senders,
 	}
 	runner.StatusRestore()
+
 	return
 }
 
@@ -165,10 +168,17 @@ func (pr *PluginRunner) Run() {
 			pr.exitSuccessChan <- struct{}{}
 			return
 		case <-pr.Ticker.C:
-			resDatas, err := plugin.PluginRun(plugin.Plugins[pr.Type], pr.PluginConfig, pr.logPath,  pr.Cycle)
+			plugin.Lock.RLock()
+			p := plugin.Plugins[pr.Type]
+			if p == nil {
+				log.Errorf("plugin %v running err, no such type plugin", pr.Type)
+				continue
+			}
+			resDatas, err := plugin.PluginRun(p , pr.PluginConfig, pr.logPath,  pr.Cycle)
+			plugin.Lock.RUnlock()
 			if err!= nil {
 				log.Error(err)
-				break
+				continue
 			}
 			datas = append(datas, resDatas...)
 			pr.rs.ReadDataCount += int64(len(resDatas))

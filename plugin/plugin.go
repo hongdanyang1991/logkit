@@ -31,16 +31,16 @@ type Plugin struct {
 }
 
 type Config struct {
-	Enabled bool   `json:"enabled"`		//是否禁用plugin
-	Dir     string `json:"dir"`			//plugin路径
-	Git     string `json:"git"`			//plugin git地址
-	//LogDir  string `json:"logs"`		//plugin日志输出路径
+	Enabled 		bool   `json:"enabled"`			//是否禁用plugin
+	Dir     		string `json:"dir"`				//plugin路径
+	remoteSource	string `json:"remoteSource"`	//plugin git地址
+	//LogDir  		string `json:"logs"`			//plugin日志输出路径
 }
 
 var (
-	Plugins              = make(map[string]*Plugin)
+	Plugins              map[string]*Plugin
 	Conf     			 *Config
-	lock       			 = new(sync.RWMutex)
+	Lock       			 = new(sync.RWMutex)
 	confDir              = "conf"
 )
 
@@ -50,18 +50,24 @@ func ListPlugins() map[string]*Plugin {
 }
 
 
+
 //同步插件
 func SyncPlugins() error {
-	plugins := make(map[string]*Plugin)
+	Lock.Lock()
 	if !Conf.Enabled {
 		return fmt.Errorf("plugin is not allowed")
 	}
-	dir := Conf.Dir
+	plugins := make(map[string]*Plugin)
 
-	if !file.IsExist(dir) || file.IsFile(dir) {
-		return fmt.Errorf("the file %v is not exist", dir)
+	dir := Conf.Dir
+	if dir == "" {
+		dir = "./plugins"
+		log.Debugf("No plugin directory specified , use default plugin directory %v", dir)
 	}
 
+	if !file.IsExist(dir) || file.IsFile(dir) {
+		return fmt.Errorf("the directory %v is not exist", dir)
+	}
 
 	//plugins路径
 	pluginFiles, err := ioutil.ReadDir(dir)
@@ -83,36 +89,42 @@ func SyncPlugins() error {
 			log.Println("can not list files under", pluginPath)
 			return fmt.Errorf("can not list files under %v", pluginPath)
 		}
+		confExist := false
+		var fName string
+		var cycle int
+		var modTime int64
+		var exeFile string
 		for _, f := range fs {
-			confExist := false
+			fName = f.Name()
+			//判断为否文配置文件文件夹
 			if f.IsDir() {
-				if f.Name() != confDir {
-					continue
+				if fName == confDir {
+					confExist = true
 				}
-				confExist = true
+				continue
 			}
-			fName := f.Name()
+			//判断是否为符合规范的可执行文件($cycle_$xx)
 			arr := strings.Split(fName, "_")
 			if len(arr) < 2 {
 				continue
 			}
-
 			// filename should be: $cycle_$xx
-			var cycle int
 			cycle, err = strconv.Atoi(arr[0])
 			if err != nil {
 				continue
 			}
-			if !confExist {
-				confFile := filepath.Join(pluginPath, confDir)
-				os.Mkdir(confFile, os.ModePerm)
-			}
-			plugin := &Plugin{Type: fileName,Path: pluginPath, MTime: f.ModTime().Unix(), DefaultCycle: cycle, ExecFile:fName, ConfDir:confDir}
-			plugins[fileName] = plugin
-			break
+			exeFile = fName
+			modTime = f.ModTime().Unix()
 		}
+		if !confExist {
+			confFile := filepath.Join(pluginPath, confDir)
+			os.Mkdir(confFile, os.ModePerm)
+		}
+		p := &Plugin{Type: fileName,Path: pluginPath, MTime: modTime, DefaultCycle: cycle, ExecFile:exeFile, ConfDir:confDir}
+		plugins[fileName] = p
 	}
 	Plugins = plugins
+	Lock.Unlock()
 	return nil
 }
 
@@ -181,7 +193,7 @@ func PluginRun(plugin *Plugin, configFile string, logPath string, Cycle int) (me
 	return
 }
 
-func DelNoUsePlugins(newPlugins map[string]*Plugin) {
+func DeletePlugins(newPlugins map[string]*Plugin) {
 	for currKey, currPlugin := range Plugins {
 		newPlugin, ok := newPlugins[currKey]
 		if !ok || currPlugin.MTime != newPlugin.MTime {
@@ -190,7 +202,7 @@ func DelNoUsePlugins(newPlugins map[string]*Plugin) {
 	}
 }
 
-func AddNewPlugins(newPlugins map[string]*Plugin) {
+func AddPlugins(newPlugins map[string]*Plugin) {
 
 }
 
