@@ -1,55 +1,56 @@
 package plugin
 
 import (
-	"path/filepath"
-	"io/ioutil"
-	"strings"
-	"strconv"
-	"github.com/toolkits/file"
 	"github.com/qiniu/log"
+	"github.com/toolkits/file"
+	"io/ioutil"
+	"path/filepath"
+	"strconv"
+	"strings"
 
-	"sync"
 	"os"
+	"sync"
 
 	"bytes"
 	"github.com/toolkits/sys"
 	"os/exec"
 	//"syscall"
-	"time"
 	"encoding/json"
 	"fmt"
 	. "github.com/qiniu/logkit/utils/models"
+	"time"
 )
 
 type Plugin struct {
-	Type 		    string
-	Path            string	  //插件路径
-	MTime    		int64	  //修改时间
-	DefaultCycle    int	   	  //默认运行周期
-	ExecFile 		string    //可执行文件名称
-	ConfDir 		string    //配置文件名称
+	Type         string
+	Path         string //插件路径
+	MTime        int64  //修改时间
+	DefaultCycle int    //默认运行周期
+	ExecFile     string //可执行文件名称
+	ConfDir      string //配置文件名称
 }
 
 type Config struct {
-	Enabled 		bool   `json:"enabled"`			//是否禁用plugin
-	Dir     		string `json:"dir"`				//plugin路径
-	remoteSource	string `json:"remoteSource"`	//plugin git地址
+	Enabled      bool   `json:"enabled"`      //是否禁用plugin
+	Dir          string `json:"dir"`          //plugin路径
+	remoteSource string `json:"remoteSource"` //plugin git地址
 	//LogDir  		string `json:"logs"`			//plugin日志输出路径
 }
 
 var (
-	Plugins              map[string]*Plugin
-	Conf     			 *Config
-	Lock       			 = new(sync.RWMutex)
-	confDir              = "conf"
+	Plugins map[string]*Plugin
+	Conf    *Config
+	Lock    = new(sync.RWMutex)
+	confDir = "conf"
 )
 
-
-func ListPlugins() map[string]*Plugin {
-	return Plugins
+func ListPlugins() map[string]Plugin {
+	ps := map[string]Plugin{}
+	for k, v := range Plugins {
+		ps[k] = *v
+	}
+	return ps
 }
-
-
 
 //同步插件
 func SyncPlugins() error {
@@ -120,7 +121,7 @@ func SyncPlugins() error {
 			confFile := filepath.Join(pluginPath, confDir)
 			os.Mkdir(confFile, os.ModePerm)
 		}
-		p := &Plugin{Type: fileName,Path: pluginPath, MTime: modTime, DefaultCycle: cycle, ExecFile:exeFile, ConfDir:confDir}
+		p := &Plugin{Type: fileName, Path: pluginPath, MTime: modTime, DefaultCycle: cycle, ExecFile: exeFile, ConfDir: confDir}
 		plugins[fileName] = p
 	}
 	Plugins = plugins
@@ -130,7 +131,7 @@ func SyncPlugins() error {
 
 func PluginRun(plugin *Plugin, configFile string, logPath string, Cycle int) (metrics []Data, err error) {
 
-	timeout := Cycle * 1000 - 500
+	timeout := Cycle*1000 - 500
 	exePath := filepath.Join(plugin.Path, plugin.ExecFile)
 
 	if !file.IsExist(exePath) {
@@ -160,7 +161,7 @@ func PluginRun(plugin *Plugin, configFile string, logPath string, Cycle int) (me
 
 	if isTimeout {
 		// has be killed
-		if err == nil  {
+		if err == nil {
 			err = fmt.Errorf("plugin %v run timeout and has been killed successfully", exePath)
 		}
 
@@ -188,7 +189,7 @@ func PluginRun(plugin *Plugin, configFile string, logPath string, Cycle int) (me
 	err = json.Unmarshal(data, &metrics)
 	if err != nil {
 		err = fmt.Errorf("json.Unmarshal stdout of %s fail. error:%s stdout: \n%s\n", exePath, err, stdout.String())
-		return nil , err
+		return nil, err
 	}
 	return
 }

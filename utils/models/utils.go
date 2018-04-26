@@ -27,8 +27,8 @@ import (
 
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/json-iterator/go"
 	"github.com/Shopify/sarama"
+	"github.com/json-iterator/go"
 )
 
 type File struct {

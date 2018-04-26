@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/qiniu/log"
 	"github.com/qiniu/logkit/conf"
 	. "github.com/qiniu/logkit/utils/models"
-	"github.com/qiniu/log"
 	"github.com/qiniu/pandora-go-sdk/base/reqerr"
 	"github.com/stretchr/testify/assert"
 )

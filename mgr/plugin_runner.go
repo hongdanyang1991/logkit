@@ -1,39 +1,38 @@
 package mgr
 
 import (
-	"github.com/qiniu/logkit/plugin"
-	"github.com/qiniu/logkit/transforms"
-	"time"
-	"sync"
-	"github.com/qiniu/logkit/sender"
-	"github.com/qiniu/logkit/reader"
-	"fmt"
-	"github.com/qiniu/logkit/conf"
-	. "github.com/qiniu/logkit/utils/models"
-	"sync/atomic"
-	"github.com/qiniu/log"
 	"errors"
-	"path/filepath"
-	"os"
-	"io/ioutil"
+	"fmt"
 	"github.com/json-iterator/go"
+	"github.com/qiniu/log"
+	"github.com/qiniu/logkit/conf"
+	"github.com/qiniu/logkit/plugin"
+	"github.com/qiniu/logkit/reader"
+	"github.com/qiniu/logkit/sender"
+	"github.com/qiniu/logkit/transforms"
+	. "github.com/qiniu/logkit/utils/models"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
-
 type PluginConfig struct {
-	Type       string					`json:"type"`
-	//Cycle	   int						`json:"cycle"`
-	//BatchCount int  					`json:"batchCount"`
-	LogPath    string					`json:"log_path"`
-	Config     map[string]interface{} 	`json:"config,omitempty"`
+	PluginType string `json:"type"`
+	//Cycle	   		 int					`json:"cycle"`
+	//BatchCount 	 int  					`json:"batchCount"`
+	LogPath string                 `json:"log_path"`
+	Config  map[string]interface{} `json:"config,omitempty"`
 }
 
-const DefaultBatchCount  = 10
+const DefaultBatchCount = 10
 
 type PluginRunner struct {
-	RunnerName 		 string					`json:"name"`
-	Type			 string
-	transformers 	 []transforms.Transformer
+	RunnerName       string `json:"name"`
+	PluginType       string
+	transformers     []transforms.Transformer
 	meta             *reader.Meta
 	rs               *RunnerStatus
 	lastRs           *RunnerStatus
@@ -41,17 +40,20 @@ type PluginRunner struct {
 	lastSend         time.Time
 	stopped          int32
 	exitChan         chan struct{}
-	exitSuccessChan	 chan struct{}
-	senders      	 []sender.Sender
+	exitSuccessChan  chan struct{}
+	senders          []sender.Sender
 	Ticker           *time.Ticker
 	BatchCount       int
 	MaxBatchInterval int
-	Cycle			 int
-	PluginConfig	 string
-	logPath			 string
+	Cycle            int
+	PluginConfig     string
+	logPath          string
 }
 
 func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *PluginRunner, err error) {
+	if plugin.Conf.Enabled == false {
+		return nil, fmt.Errorf("Runner " + rc.RunnerName + " add failed, err is plugin runner is not allowed")
+	}
 	//meta
 	cf := conf.MapConf{
 		GlobalKeyName:  rc.RunnerName,
@@ -68,9 +70,9 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 
 	//plugin
 	plugin.Lock.RLock()
-	p := plugin.Plugins[rc.PluginConfig.Type]
+	p := plugin.Plugins[rc.PluginConfig.PluginType]
 	if p == nil {
-		return nil, fmt.Errorf("no such type of %v plugin", rc.PluginConfig.Type)
+		return nil, fmt.Errorf("no such type of %v plugin", rc.PluginConfig.PluginType)
 	}
 	if rc.CollectInterval <= 0 {
 		rc.CollectInterval = p.DefaultCycle
@@ -82,7 +84,7 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 	if rc.MaxBatchInterval <= 0 {
 		rc.MaxBatchInterval = defaultSendIntervalSeconds
 	}
-/*	if rc.MaxBatchLen > rc.MaxBatchInterval/rc.CollectInterval {
+	/*	if rc.MaxBatchLen > rc.MaxBatchInterval/rc.CollectInterval {
 		rc .MaxBatchLen = rc.MaxBatchInterval/rc.CollectInterval
 	}*/
 	confBytes, err := jsoniter.MarshalIndent(rc.PluginConfig.Config, "", "    ")
@@ -92,7 +94,7 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 	pluginConfigDir := filepath.Join(p.Path, p.ConfDir)
 	plugin.Lock.RUnlock()
 	pluginConfigFile := rc.RunnerName + ".conf"
-	if _,err := os.Stat(pluginConfigDir); err != nil {
+	if _, err := os.Stat(pluginConfigDir); err != nil {
 		if os.IsNotExist(err) {
 			if err = os.Mkdir(pluginConfigDir, 0755); err != nil && !os.IsExist(err) {
 				return nil, fmt.Errorf("plugin config dir not exists and make dir failed, err is %v", err)
@@ -119,11 +121,11 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 	}
 
 	runner = &PluginRunner{
-		RunnerName: rc.RunnerName,
-		exitChan:	make(chan struct{}),
-		exitSuccessChan:	make(chan struct{}),
-		lastSend:   time.Now(), // 上一次发送时间
-		meta:       meta,
+		RunnerName:      rc.RunnerName,
+		exitChan:        make(chan struct{}),
+		exitSuccessChan: make(chan struct{}),
+		lastSend:        time.Now(), // 上一次发送时间
+		meta:            meta,
 		rs: &RunnerStatus{
 			ReaderStats:   StatsInfo{},
 			SenderStats:   make(map[string]StatsInfo),
@@ -138,16 +140,16 @@ func NewPluginRunner(rc RunnerConfig, sr *sender.SenderRegistry) (runner *Plugin
 			Name:          rc.RunnerName,
 			RunningStatus: RunnerRunning,
 		},
-		rsMutex:         new(sync.RWMutex),
-		Ticker:			 ticker,
-		Cycle:			 rc.CollectInterval,
-		Type:    		 rc.PluginConfig.Type,
-		BatchCount:		 rc.MaxBatchLen,
-		MaxBatchInterval:rc.MaxBatchInterval,
-		PluginConfig:	 pluginConfig,
-		logPath:		 rc.PluginConfig.LogPath,
-		transformers:    transformers,
-		senders:         senders,
+		rsMutex:          new(sync.RWMutex),
+		Ticker:           ticker,
+		Cycle:            rc.CollectInterval,
+		PluginType:       rc.PluginConfig.PluginType,
+		BatchCount:       rc.MaxBatchLen,
+		MaxBatchInterval: rc.MaxBatchInterval,
+		PluginConfig:     pluginConfig,
+		logPath:          rc.PluginConfig.LogPath,
+		transformers:     transformers,
+		senders:          senders,
 	}
 	runner.StatusRestore()
 
@@ -164,7 +166,7 @@ func (pr *PluginRunner) Run() {
 	datas := make([]Data, 0)
 	for {
 		select {
-		case <- pr.exitChan:
+		case <-pr.exitChan:
 			if len(datas) > 0 {
 				pr.batchProcess(datas)
 			}
@@ -172,20 +174,20 @@ func (pr *PluginRunner) Run() {
 			return
 		case <-pr.Ticker.C:
 			plugin.Lock.RLock()
-			p := plugin.Plugins[pr.Type]
+			p := plugin.Plugins[pr.PluginType]
 			if p == nil {
-				log.Errorf("plugin %v running err, no such type plugin", pr.Type)
+				log.Errorf("plugin %v running err, no such type plugin", pr.PluginType)
 				continue
 			}
-			resDatas, err := plugin.PluginRun(p , pr.PluginConfig, pr.logPath,  pr.Cycle)
+			resDatas, err := plugin.PluginRun(p, pr.PluginConfig, pr.logPath, pr.Cycle)
 			plugin.Lock.RUnlock()
-			if err!= nil {
+			if err != nil {
 				log.Error(err)
 				continue
 			}
 			datas = append(datas, resDatas...)
 			pr.rs.ReadDataCount += int64(len(resDatas))
-			if len(datas)  >= pr.BatchCount || time.Now().Sub(pr.lastSend).Seconds() >= float64(pr.MaxBatchInterval) {
+			if len(datas) >= pr.BatchCount || time.Now().Sub(pr.lastSend).Seconds() >= float64(pr.MaxBatchInterval) {
 				pr.batchProcess(datas)
 				datas = make([]Data, 0)
 			}
@@ -193,9 +195,8 @@ func (pr *PluginRunner) Run() {
 	}
 }
 
-
 //批处理
-func (pr *PluginRunner) batchProcess (datas []Data) {
+func (pr *PluginRunner) batchProcess(datas []Data) {
 	var err error
 	for i := range pr.transformers {
 		if pr.transformers[i].Stage() == transforms.StageAfterParser {
@@ -213,7 +214,7 @@ func (pr *PluginRunner) batchProcess (datas []Data) {
 	pr.lastSend = time.Now()
 }
 
-func (pr *PluginRunner) trySend (s sender.Sender, datas []Data, times int) bool {
+func (pr *PluginRunner) trySend(s sender.Sender, datas []Data, times int) bool {
 	if len(datas) <= 0 {
 		return true
 	}
@@ -304,7 +305,10 @@ func (pr *PluginRunner) Reset() error {
 			}
 		}
 	}
-	return errors.New(errMsg)
+	if errMsg != "" {
+		err = errors.New(errMsg)
+	}
+	return err
 }
 
 func (_ *PluginRunner) Cleaner() CleanInfo {
@@ -313,7 +317,7 @@ func (_ *PluginRunner) Cleaner() CleanInfo {
 	}
 }
 
-func (pr *PluginRunner) getStatusFrequently(rss *RunnerStatus, now time.Time) (bool, float64) {
+func (pr *PluginRunner) getStatusFrequently(now time.Time) (bool, float64) {
 	pr.rsMutex.RLock()
 	defer pr.rsMutex.RUnlock()
 	elaspedTime := now.Sub(pr.rs.lastState).Seconds()
@@ -326,16 +330,15 @@ func (pr *PluginRunner) getStatusFrequently(rss *RunnerStatus, now time.Time) (b
 func (pr *PluginRunner) Status() RunnerStatus {
 	var isFre bool
 	var elaspedtime float64
-	rss := RunnerStatus{}
 	now := time.Now()
-	if isFre, elaspedtime = pr.getStatusFrequently(&rss, now); isFre {
-		return rss
+	if isFre, elaspedtime = pr.getStatusFrequently(now); isFre {
+		return *pr.lastRs
 	}
 	pr.rsMutex.Lock()
 	defer pr.rsMutex.Unlock()
 	pr.rs.Elaspedtime += elaspedtime
 	pr.rs.lastState = now
-	durationTime := float64(pr.Cycle)
+	//durationTime := float64(pr.Cycle)
 	pr.rs.ReadSpeed = float64(pr.rs.ReadDataCount-pr.lastRs.ReadDataCount) / elaspedtime
 	pr.rs.ReadSpeedTrend = getTrend(pr.lastRs.ReadSpeed, pr.rs.ReadSpeed)
 
@@ -348,15 +351,15 @@ func (pr *PluginRunner) Status() RunnerStatus {
 
 	for k, v := range pr.rs.SenderStats {
 		if lv, ok := pr.lastRs.SenderStats[k]; ok {
-			v.Speed, v.Trend = calcSpeedTrend(lv, v, durationTime)
+			v.Speed, v.Trend = calcSpeedTrend(lv, v, elaspedtime)
 		} else {
-			v.Speed, v.Trend = calcSpeedTrend(StatsInfo{}, v, durationTime)
+			v.Speed, v.Trend = calcSpeedTrend(StatsInfo{}, v, elaspedtime)
 		}
 		pr.rs.SenderStats[k] = v
 	}
 	pr.rs.RunningStatus = RunnerRunning
 	*pr.lastRs = pr.rs.Clone()
-	return rss
+	return *pr.lastRs
 }
 
 func (pr *PluginRunner) StatusRestore() {
@@ -424,5 +427,3 @@ func (pr *PluginRunner) StatusBackup() {
 		log.Infof("runner %v, backup status %v", pr.RunnerName, bStart)
 	}
 }
-
-

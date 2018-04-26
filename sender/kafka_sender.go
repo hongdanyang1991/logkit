@@ -32,17 +32,17 @@ const (
 const defaultVersion = "0.8.2.0"
 
 const (
-	KeyKafkaHost     = "kafka_host"      //主机地址,可以有多个
-	KeyKafkaTopic    = "kafka_topic"     //topic 1.填一个值,则topic为所填值 2.填两个值: %{[字段名]}, defaultTopic :根据每条event,以指定字段值为topic,若无,则用默认值
-	KeyKafkaClientId = "kafka_client_id" //客户端ID
-	KeyKafkaMaxFlushNum = "kafka_max_flush_num"			//最大缓冲条数(当一个请求数据大小超过kafka限制时,将会发送失败)
-	KeyKafkaFlushFrequency = "kafka_flush_frequency"	//缓冲频率
-	KeyKafkaRetryMax    = "kafka_retry_max"   //最大重试次数
-	KeyKafkaCompression = "kafka_compression" //压缩模式,有none, gzip, snappy
-	KeyKafkaTimeout     = "kafka_timeout"     //连接超时时间
-	KeyKafkaKeepAlive   = "kafka_keep_alive"  //保持连接时长
-	KeyMaxMessageBytes  = "max_message_bytes" //每条消息最大字节数
-	KeyKafkaVersion     = "kafka_version"	  //kafka version
+	KeyKafkaHost           = "kafka_host"            //主机地址,可以有多个
+	KeyKafkaTopic          = "kafka_topic"           //topic 1.填一个值,则topic为所填值 2.填两个值: %{[字段名]}, defaultTopic :根据每条event,以指定字段值为topic,若无,则用默认值
+	KeyKafkaClientId       = "kafka_client_id"       //客户端ID
+	KeyKafkaMaxFlushNum    = "kafka_max_flush_num"   //最大缓冲条数(当一个请求数据大小超过kafka限制时,将会发送失败)
+	KeyKafkaFlushFrequency = "kafka_flush_frequency" //缓冲频率
+	KeyKafkaRetryMax       = "kafka_retry_max"       //最大重试次数
+	KeyKafkaCompression    = "kafka_compression"     //压缩模式,有none, gzip, snappy
+	KeyKafkaTimeout        = "kafka_timeout"         //连接超时时间
+	KeyKafkaKeepAlive      = "kafka_keep_alive"      //保持连接时长
+	KeyMaxMessageBytes     = "max_message_bytes"     //每条消息最大字节数
+	KeyKafkaVersion        = "kafka_version"         //kafka version
 )
 
 var (
@@ -92,7 +92,7 @@ func NewKafkaSender(conf conf.MapConf) (sender Sender, err error) {
 	//批量发送条数
 	cfg.Producer.Flush.MaxMessages = maxBathNum
 	//批量发送间隔
-	cfg.Producer.Flush.Frequency =  time.Duration(frequency) * time.Second
+	cfg.Producer.Flush.Frequency = time.Duration(frequency) * time.Second
 	cfg.Producer.Retry.Max = retryMax
 	compressionMode, ok := compressionModes[strings.ToLower(compression)]
 	if !ok {
@@ -125,7 +125,6 @@ func NewKafkaSender(conf conf.MapConf) (sender Sender, err error) {
 	sender = newKafkaSender(name, hosts, topic, cfg, producer)
 	return
 }
-
 
 func newKafkaSender(name string, hosts []string, topic []string, cfg *sarama.Config, producer sarama.SyncProducer) (k *KafkaSender) {
 	k = &KafkaSender{

@@ -1,0 +1,176 @@
+2018/04/26 09:09:37 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 09:09:37 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 09:09:37 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 09:09:37 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 09:09:47 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 09:09:48 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 09:09:48 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 09:09:48 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 09:09:56 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 09:09:56 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 09:09:56 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 09:09:56 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 09:10:05 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 09:10:05 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 09:10:05 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 09:10:05 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 09:10:13 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 09:10:13 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 09:10:13 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 09:10:13 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 09:10:20 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 09:10:20 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 09:10:20 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 09:10:20 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 09:10:29 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 09:10:29 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 09:10:29 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 09:10:29 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:25:32 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:25:32 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:25:32 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:25:32 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:25:37 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:25:37 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:25:37 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:25:37 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:25:42 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:25:42 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:25:42 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:25:42 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:25:47 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:25:47 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:25:47 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:25:47 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:25:52 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:25:52 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:25:52 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:25:52 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:25:57 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:25:57 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:25:57 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:25:57 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:26:02 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:26:02 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:26:02 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:26:02 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:26:07 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:26:07 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:26:07 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:26:07 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:26:12 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:26:12 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:26:12 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:26:12 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:26:17 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:26:17 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:26:17 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:26:17 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:26:22 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:26:22 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:26:22 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:26:22 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:26:27 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:26:27 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:26:27 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:26:27 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:26:32 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:26:32 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:26:32 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:26:32 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:26:37 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:26:37 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:26:37 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:26:37 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:26:42 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:26:42 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:26:42 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:26:42 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:26:47 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:26:47 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:26:47 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:26:47 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:26:52 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:26:52 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:26:52 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:26:52 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:26:57 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:26:57 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:26:57 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:26:57 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:27:02 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:27:02 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:27:02 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:27:02 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:27:07 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:27:07 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:27:07 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:27:07 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:27:12 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:27:12 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:27:12 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:27:12 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:27:17 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:27:17 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:27:17 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:27:17 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:27:22 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:27:22 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:27:22 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:27:22 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:27:27 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:27:27 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:27:27 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:27:27 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:27:32 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:27:32 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:27:32 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:27:32 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:27:37 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:27:37 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:27:37 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:27:37 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:27:42 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:27:42 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:27:42 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:27:42 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:27:47 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:27:47 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:27:47 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:27:47 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:27:52 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:27:52 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:27:52 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:27:52 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:27:57 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:27:57 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:27:57 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:27:57 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:28:02 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:28:02 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:28:02 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:28:02 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:28:07 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:28:07 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:28:07 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:28:07 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:28:12 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:28:12 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:28:12 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:28:12 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:28:17 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:28:17 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:28:17 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:28:17 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:28:22 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:28:22 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:28:22 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:28:22 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:28:27 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:28:27 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:28:27 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:28:27 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success
+2018/04/26 11:28:32 [INFO][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:49: start collect mysql metric data
+2018/04/26 11:28:32 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:556: gatherGlobalStatuses success
+2018/04/26 11:28:32 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:578: gatherEventsStatements success
+2018/04/26 11:28:32 [DEBUG][github.com/hongdanyang1991/blogkit-plugins/mysql] mysql.go:587: gatherEventsStages success

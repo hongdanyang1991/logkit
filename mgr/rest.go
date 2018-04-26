@@ -104,6 +104,10 @@ func NewRestService(mgr *Manager, router *echo.Echo) *RestService {
 	router.GET(PREFIX+"/metric/usages", rs.GetMetricUsages())
 	router.GET(PREFIX+"/metric/options", rs.GetMetricOptions())
 
+	//plugin API
+	router.GET(PREFIX+"/plugin/sync", rs.SyncPlugins())
+	router.GET(PREFIX+"/plugin/list", rs.ListPlugins())
+
 	//version
 	router.GET(PREFIX+"/version", rs.GetVersion())
 

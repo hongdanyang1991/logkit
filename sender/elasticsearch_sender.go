@@ -12,9 +12,9 @@ import (
 	. "github.com/qiniu/logkit/utils/models"
 
 	elasticV6 "github.com/olivere/elastic"
+	"github.com/qiniu/logkit/times"
 	elasticV3 "gopkg.in/olivere/elastic.v3"
 	elasticV5 "gopkg.in/olivere/elastic.v5"
-	"github.com/qiniu/logkit/times"
 )
 
 // ElasticsearchSender ElasticSearch sender
@@ -35,19 +35,19 @@ type ElasticsearchSender struct {
 	intervalIndex  int
 	timeZone       *time.Location
 	logkitSendTime bool
-	timestamp 	   string
+	timestamp      string
 }
 
 const (
 	KeyElasticHost    = "elastic_host"
 	KeyElasticVersion = "elastic_version"
-	KeyElasticIndex   = "elastic_index"   //index 1.填一个值,则index为所填值 2.填两个值: %{[字段名]}, defaultIndex :根据每条event,以指定字段值为index,若无,则用默认值
+	KeyElasticIndex   = "elastic_index" //index 1.填一个值,则index为所填值 2.填两个值: %{[字段名]}, defaultIndex :根据每条event,以指定字段值为index,若无,则用默认值
 	KeyElasticType    = "elastic_type"
 	KeyElasticAlias   = "elastic_keys"
 
 	KeyElasticIndexStrategy = "elastic_index_strategy"
 	KeyElasticTimezone      = "elastic_time_zone"
-	keyElasticTimestamp		= "elastic_timestamp"  //指定时间戳字段  1.若为空,则不指定 2.若某条数据不存在该字段,则创建,并以当前时间为value 3.若某条数据存在该字段且无法转换成时间类型,则丢弃该条数据
+	keyElasticTimestamp     = "elastic_timestamp" //指定时间戳字段  1.若为空,则不指定 2.若某条数据不存在该字段,则创建,并以当前时间为value 3.若某条数据存在该字段且无法转换成时间类型,则丢弃该条数据
 )
 
 const (
@@ -68,9 +68,9 @@ var (
 
 //timeZone
 const (
-	KeyLocalTimezone = "Local"
-	KeyUTCTimezone   = "UTC"
-	KeyPRCTimezone   = "PRC"
+	KeyLocalTimezone   = "Local"
+	KeyUTCTimezone     = "UTC"
+	KeyPRCTimezone     = "PRC"
 	KeyDefaultTimezone = KeyUTCTimezone
 )
 
@@ -160,7 +160,7 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 		intervalIndex:   i,
 		timeZone:        timeZone,
 		logkitSendTime:  logkitSendTime,
-		timestamp:		 timestamp,
+		timestamp:       timestamp,
 	}, nil
 }
 
@@ -309,11 +309,11 @@ func processDoc(ess *ElasticsearchSender, doc Data) error {
 	return nil
 }
 
-func buildIndexName(ess *ElasticsearchSender, data Data, index []string, timeZone *time.Location, size int) (string, error){
+func buildIndexName(ess *ElasticsearchSender, data Data, index []string, timeZone *time.Location, size int) (string, error) {
 	var indexName string
 	var timestamp time.Time
 	var err error
-	if  ess.timestamp == "" || data[ess.timestamp] == ""{
+	if ess.timestamp == "" || data[ess.timestamp] == "" {
 		timestamp = time.Now()
 	} else {
 		if timeStr, ok := data[ess.timestamp].(string); ok {
@@ -358,7 +358,7 @@ func buildIndexName(ess *ElasticsearchSender, data Data, index []string, timeZon
 }
 
 //检测elasticsearch名称是否合法,并将字符转换成小写
-func checkESIndexLegal(indexName *string) (error) {
+func checkESIndexLegal(indexName *string) error {
 	*indexName = strings.ToLower(*indexName)
 	return nil
 }

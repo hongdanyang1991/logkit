@@ -1,21 +1,21 @@
 package mgr
 
 import (
-	"testing"
-	"github.com/qiniu/logkit/conf"
-	"github.com/qiniu/logkit/sender"
 	"fmt"
+	"github.com/qiniu/logkit/conf"
 	"github.com/qiniu/logkit/plugin"
+	"github.com/qiniu/logkit/sender"
 	"sync"
+	"testing"
 )
 
 func TestNewPluginRunner(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	plugin.Conf = &plugin.Config{
-		Enabled:true,
-		Dir:	`E:\Go\GOPATH\src\github.com\qiniu\logkit\plugins`,
-		Git:	"",
+		Enabled: true,
+		Dir:     `E:\Go\GOPATH\src\github.com\qiniu\logkit\plugins`,
+		Git:     "",
 	}
 	err := plugin.SyncPlugins()
 	if err != nil {
@@ -25,19 +25,19 @@ func TestNewPluginRunner(t *testing.T) {
 
 	rc1 := RunnerConfig{
 		PluginConfig: &PluginConfig{
-			Type:"hello1",
+			Type: "hello1",
 			Config: map[string]interface{}{
-				"name":"admin",
-				"pass":"123",
+				"name": "admin",
+				"pass": "123",
 			},
 		},
 		RunnerInfo: RunnerInfo{
-			RunnerName: "hello1",
-			CollectInterval:1,
-			MaxBatchLen:10,
+			RunnerName:      "hello1",
+			CollectInterval: 1,
+			MaxBatchLen:     10,
 		},
-		Transforms:[]map[string]interface{}{},
-		SenderConfig:[]conf.MapConf{},
+		Transforms:   []map[string]interface{}{},
+		SenderConfig: []conf.MapConf{},
 	}
 
 	pRunner1, err1 := NewPluginRunner(rc1, sr)
@@ -48,19 +48,19 @@ func TestNewPluginRunner(t *testing.T) {
 
 	rc2 := RunnerConfig{
 		PluginConfig: &PluginConfig{
-			Type:"hello2",
+			Type: "hello2",
 			Config: map[string]interface{}{
-				"name":"admin",
-				"pass":"123",
+				"name": "admin",
+				"pass": "123",
 			},
 		},
 		RunnerInfo: RunnerInfo{
-			RunnerName: "hello2",
-			CollectInterval:1,
-			MaxBatchLen:10,
+			RunnerName:      "hello2",
+			CollectInterval: 1,
+			MaxBatchLen:     10,
 		},
-		Transforms:[]map[string]interface{}{},
-		SenderConfig:[]conf.MapConf{},
+		Transforms:   []map[string]interface{}{},
+		SenderConfig: []conf.MapConf{},
 	}
 	pRunner2, err2 := NewPluginRunner(rc2, sr)
 	if err2 != nil {
@@ -70,19 +70,19 @@ func TestNewPluginRunner(t *testing.T) {
 
 	rc3 := RunnerConfig{
 		PluginConfig: &PluginConfig{
-			Type:"hello3",
+			Type: "hello3",
 			Config: map[string]interface{}{
-				"name":"admin",
-				"pass":"123",
+				"name": "admin",
+				"pass": "123",
 			},
 		},
 		RunnerInfo: RunnerInfo{
-			RunnerName: "hello3",
-			CollectInterval:1,
-			MaxBatchLen:10,
+			RunnerName:      "hello3",
+			CollectInterval: 1,
+			MaxBatchLen:     10,
 		},
-		Transforms:[]map[string]interface{}{},
-		SenderConfig:[]conf.MapConf{},
+		Transforms:   []map[string]interface{}{},
+		SenderConfig: []conf.MapConf{},
 	}
 	pRunner3, err3 := NewPluginRunner(rc3, sr)
 	if err3 != nil {
@@ -92,19 +92,19 @@ func TestNewPluginRunner(t *testing.T) {
 
 	rc4 := RunnerConfig{
 		PluginConfig: &PluginConfig{
-			Type:"hello4",
+			Type: "hello4",
 			Config: map[string]interface{}{
-				"name":"admin",
-				"pass":"123",
+				"name": "admin",
+				"pass": "123",
 			},
 		},
 		RunnerInfo: RunnerInfo{
-			RunnerName: "hello4",
-			CollectInterval:1,
-			MaxBatchLen:10,
+			RunnerName:      "hello4",
+			CollectInterval: 1,
+			MaxBatchLen:     10,
 		},
-		Transforms:[]map[string]interface{}{},
-		SenderConfig:[]conf.MapConf{},
+		Transforms:   []map[string]interface{}{},
+		SenderConfig: []conf.MapConf{},
 	}
 	pRunner4, err4 := NewPluginRunner(rc4, sr)
 	if err4 != nil {
@@ -114,20 +114,19 @@ func TestNewPluginRunner(t *testing.T) {
 
 	rc5 := RunnerConfig{
 		PluginConfig: &PluginConfig{
-			Type:"hello5",
+			Type: "hello5",
 			Config: map[string]interface{}{
-				"name":"admin",
-				"pass":"123",
-
+				"name": "admin",
+				"pass": "123",
 			},
 		},
 		RunnerInfo: RunnerInfo{
-			RunnerName: "hello5",
-			CollectInterval:1,
-			MaxBatchLen:10,
+			RunnerName:      "hello5",
+			CollectInterval: 1,
+			MaxBatchLen:     10,
 		},
-		Transforms:[]map[string]interface{}{},
-		SenderConfig:[]conf.MapConf{},
+		Transforms:   []map[string]interface{}{},
+		SenderConfig: []conf.MapConf{},
 	}
 	pRunner5, err5 := NewPluginRunner(rc5, sr)
 	if err5 != nil {
@@ -137,19 +136,19 @@ func TestNewPluginRunner(t *testing.T) {
 
 	rc6 := RunnerConfig{
 		PluginConfig: &PluginConfig{
-			Type:"hello6",
+			Type: "hello6",
 			Config: map[string]interface{}{
-				"name":"admin",
-				"pass":"123",
+				"name": "admin",
+				"pass": "123",
 			},
 		},
 		RunnerInfo: RunnerInfo{
-			RunnerName: "hello6",
-			CollectInterval:1,
-			MaxBatchLen:10,
+			RunnerName:      "hello6",
+			CollectInterval: 1,
+			MaxBatchLen:     10,
 		},
-		Transforms:[]map[string]interface{}{},
-		SenderConfig:[]conf.MapConf{},
+		Transforms:   []map[string]interface{}{},
+		SenderConfig: []conf.MapConf{},
 	}
 	pRunner6, err6 := NewPluginRunner(rc6, sr)
 	if err6 != nil {

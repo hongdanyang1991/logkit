@@ -1,0 +1,54 @@
+2018/04/26 11:26:14 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:26:14 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:26:18 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:26:18 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:26:23 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:26:23 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:26:28 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:26:28 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:26:33 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:26:33 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:26:38 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:26:38 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:26:43 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:26:43 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:26:48 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:26:48 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:26:53 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:26:53 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:26:58 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:26:58 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:27:03 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:27:03 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:27:08 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:27:08 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:27:13 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:27:13 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:27:18 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:27:18 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:27:23 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:27:23 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:27:28 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:27:28 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:27:33 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:27:33 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:27:38 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:27:38 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:27:43 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:27:43 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:27:48 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:27:48 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:27:53 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:27:53 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:27:58 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:27:58 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:28:03 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:28:03 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:28:08 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:28:08 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:28:13 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:28:13 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:28:18 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:28:18 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file
+2018/04/26 11:28:23 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
+2018/04/26 11:28:23 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:127: W! [inputs.redis]: server URL found without scheme; please update your configuration file

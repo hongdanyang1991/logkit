@@ -17,7 +17,7 @@ import (
 	"github.com/wvanbergen/kafka/consumergroup"
 )
 
-const defaultVersion  = "0.8.2.0"
+const defaultVersion = "0.8.2.0"
 
 type KafkaReader struct {
 	meta             *Meta
@@ -143,7 +143,6 @@ func (kr *KafkaReader) SyncMeta() {
 	kr.mux.Unlock()
 	return
 }
-
 
 func (kr *KafkaReader) Start() {
 	kr.startMux.Lock()
