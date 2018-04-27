@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/json-iterator/go"
 )
 
 var ErrStopped = errors.New("runner stopped")
@@ -85,7 +87,10 @@ func notCondition(f1 func(os.FileInfo) bool) func(os.FileInfo) bool {
 
 // modTimeLater 按最后修改时间进行比较
 func modTimeLater(f1, f2 os.FileInfo) bool {
-	return f1.ModTime().Unix() >= f2.ModTime().Unix()
+	if f1.ModTime().UnixNano() != f2.ModTime().UnixNano() {
+		return f1.ModTime().UnixNano() > f2.ModTime().UnixNano()
+	}
+	return f1.Name() > f2.Name()
 }
 
 func HeadPatternMode(mode string, v interface{}) (reg *regexp.Regexp, err error) {
@@ -121,6 +126,21 @@ func parseLoopDuration(cronSched string) (dur time.Duration, err error) {
 	if err != nil {
 		dur = time.Duration(0)
 		err = fmt.Errorf("parse Cron loop duration %v error %v, make duration as 1 second", cronSched, err)
+	}
+	return
+}
+
+func getTags(tagFile string) (tags map[string]interface{}, err error) {
+	tags = make(map[string]interface{})
+	if tagFile == "" {
+		return
+	}
+	tagsData, err := ioutil.ReadFile(tagFile)
+	if tagsData == nil || err != nil {
+		return
+	}
+	if jerr := jsoniter.Unmarshal(tagsData, &tags); jerr != nil {
+		return
 	}
 	return
 }

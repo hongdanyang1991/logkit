@@ -49,6 +49,7 @@ const (
 	EntityTooLargeError
 	ErrInvalidVariableType
 	InvalidDataSchemaError
+	ErrIncompatibleRepoSchema
 	ErrDBNameInvalidError
 	ErrInvalidSqlError
 	ErrInternalServerError
@@ -84,6 +85,8 @@ const (
 	ErrInvalidUdfJarName
 	ErrInvalidUdfFuncName
 	ErrInvalidJavaClassName
+	ErrStartExport
+	ErrStopExport
 	ErrUdfClassTypeError
 	ErrUdfClassNotFound
 	ErrUdfFunctionNotImplement
@@ -125,6 +128,11 @@ const (
 	ErrTimeFormatInvalid
 	ErrNoSuchResourceOwner
 	ErrAccessDenied
+	ErrTransformRepeatRestart
+	ErrFusionPathUsedStringVariable
+	ErrFusionPathWithUndefinedVariable
+	ErrTooManySchema
+	ErrSchemaLimitUnderflow
 )
 
 type ErrBuilder interface {
@@ -135,7 +143,14 @@ func NewInvalidArgs(name, message string) *RequestError {
 	return &RequestError{
 		Message:   fmt.Sprintf("Invalid args, argName: %s, reason: %s", name, message),
 		ErrorType: InvalidArgs,
+		Component: "pandora",
 	}
+}
+
+//WithComponent  增加错误属于哪个组件的提示
+func (re *RequestError) WithComponent(component string) *RequestError {
+	re.Component = component
+	return re
 }
 
 type RequestError struct {
@@ -144,6 +159,7 @@ type RequestError struct {
 	RequestId  string `json:"-"`
 	RawMessage string `json:"-"`
 	ErrorType  int    `json:"-"`
+	Component  string `json:"-"`
 }
 
 func New(message, rawText, reqId string, statusCode int) *RequestError {
@@ -153,11 +169,12 @@ func New(message, rawText, reqId string, statusCode int) *RequestError {
 		RequestId:  reqId,
 		RawMessage: rawText,
 		ErrorType:  DefaultRequestError,
+		Component:  "pandora",
 	}
 }
 
 func (r RequestError) Error() string {
-	return fmt.Sprintf("pandora error: StatusCode=%d, ErrorMessage=%s, RequestId=%s", r.StatusCode, r.Message, r.RequestId)
+	return fmt.Sprintf("[%s] error: StatusCode=%d, ErrorMessage=%s, RequestId=%s", r.Component, r.StatusCode, r.Message, r.RequestId)
 }
 
 func IsExistError(err error) bool {
@@ -168,7 +185,40 @@ func IsExistError(err error) bool {
 	if reqErr.ErrorType == RepoAlreadyExistsError || reqErr.ErrorType == SeriesAlreadyExistsError {
 		return true
 	}
-	if reqErr.ErrorType == ExportAlreadyExistsError {
+	if reqErr.ErrorType == ExportAlreadyExistsError || reqErr.ErrorType == ErrWorkflowAlreadyExists {
+		return true
+	}
+	return false
+}
+
+func IsNoSuchWorkflow(err error) bool {
+	reqErr, ok := err.(*RequestError)
+	if !ok {
+		return false
+	}
+	if reqErr.ErrorType == ErrNoSuchWorkflow {
+		return true
+	}
+	return false
+}
+
+func IsWorkflowStatError(err error) bool {
+	reqErr, ok := err.(*RequestError)
+	if !ok {
+		return false
+	}
+	if reqErr.ErrorType == ErrUpdateWorkflow {
+		return true
+	}
+	return false
+}
+
+func IsWorkflowNoExecutableJob(err error) bool {
+	reqErr, ok := err.(*RequestError)
+	if !ok {
+		return false
+	}
+	if reqErr.ErrorType == ErrNoExecutableJob {
 		return true
 	}
 	return false

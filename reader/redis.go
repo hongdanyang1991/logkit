@@ -3,16 +3,16 @@ package reader
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"strings"
+	"github.com/qiniu/logkit/conf"
+	. "github.com/qiniu/logkit/utils/models"
 
 	"github.com/go-redis/redis"
 	"github.com/qiniu/log"
-	"github.com/qiniu/logkit/conf"
-	"github.com/qiniu/logkit/utils"
 )
 
 const (
@@ -47,7 +47,7 @@ type RedisReader struct {
 	mux     sync.Mutex
 	started bool
 
-	stats     utils.StatsInfo
+	stats     StatsInfo
 	statsLock sync.RWMutex
 }
 
@@ -64,7 +64,7 @@ type RedisOptionn struct {
 	timeout time.Duration
 }
 
-func NewRedisReader(meta *Meta, conf conf.MapConf) (rr *RedisReader, err error) {
+func NewRedisReader(meta *Meta, conf conf.MapConf) (rr Reader, err error) {
 	dataType, err := conf.GetString(KeyRedisDataType)
 	if err != nil {
 		return
@@ -121,7 +121,7 @@ func (rr *RedisReader) setStatsError(err string) {
 	rr.stats.LastError = err
 }
 
-func (rr *RedisReader) Status() utils.StatsInfo {
+func (rr *RedisReader) Status() StatsInfo {
 	rr.statsLock.RLock()
 	defer rr.statsLock.RUnlock()
 	return rr.stats
@@ -146,7 +146,7 @@ func (rr *RedisReader) ReadLine() (data string, err error) {
 
 }
 func (rr *RedisReader) Close() (err error) {
-	if atomic.CompareAndSwapInt32(&rr.status, StatusRunning, StatusStoping) {
+	if atomic.CompareAndSwapInt32(&rr.status, StatusRunning, StatusStopping) {
 		log.Infof("Runner[%v] %v stopping", rr.meta.RunnerName, rr.Name())
 	} else {
 		close(rr.readChan)
@@ -199,7 +199,7 @@ func (rr *RedisReader) run() (err error) {
 	// running在退出状态改为Init
 	defer func() {
 		atomic.CompareAndSwapInt32(&rr.status, StatusRunning, StatusInit)
-		if atomic.CompareAndSwapInt32(&rr.status, StatusStoping, StatusStopped) {
+		if atomic.CompareAndSwapInt32(&rr.status, StatusStopping, StatusStopped) {
 			close(rr.readChan)
 			rr.client.Close()
 		}
@@ -209,7 +209,7 @@ func (rr *RedisReader) run() (err error) {
 	}()
 	// 开始work逻辑
 	for {
-		if atomic.LoadInt32(&rr.status) == StatusStoping {
+		if atomic.LoadInt32(&rr.status) == StatusStopping {
 			log.Warnf("Runner[%v] %v stopped from running", rr.meta.RunnerName, rr.Name())
 			return
 		}

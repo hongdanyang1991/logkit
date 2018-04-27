@@ -5,26 +5,29 @@ import (
 	"fmt"
 
 	"github.com/qiniu/logkit/conf"
-	"github.com/qiniu/logkit/sender"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
 )
 
 type LogParser interface {
 	Name() string
 	// parse lines into structured datas
-	Parse(lines []string) (datas []sender.Data, err error)
+	Parse(lines []string) (datas []Data, err error)
 }
 
 type ParserType interface {
 	Type() string
 }
 
+type Flushable interface {
+	Flush() (Data, error)
+}
+
 // conf 字段
 const (
-	KeyParserName = utils.GlobalKeyName
-	KeyParserType = "type"
-	KeyRunnerName = "runner_name"
-	KeyLabels     = "labels" // 额外增加的标签信息，比如机器信息等
+	KeyParserName           = GlobalKeyName
+	KeyParserType           = "type"
+	KeyLabels               = "labels" // 额外增加的标签信息，比如机器信息等
+	KeyDisableRecordErrData = "disable_record_errdata"
 )
 
 // parser 的类型
@@ -40,6 +43,7 @@ const (
 	TypeJson       = "json"
 	TypeNginx      = "nginx"
 	TypeSyslog     = "syslog"
+	TypeMysqlLog   = "mysqllog"
 )
 
 type Label struct {
@@ -66,6 +70,7 @@ func NewParserRegistry() *ParserRegistry {
 	ps.RegisterParser(TypeJson, NewJsonParser)
 	ps.RegisterParser(TypeNginx, NewNginxParser)
 	ps.RegisterParser(TypeSyslog, NewSyslogParser)
+	ps.RegisterParser(TypeMysqlLog, NewMysqllogParser)
 	return ps
 }
 

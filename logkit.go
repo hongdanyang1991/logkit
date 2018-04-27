@@ -11,16 +11,19 @@ import (
 	"sort"
 	"time"
 
-	"github.com/qiniu/log"
 	"github.com/qiniu/logkit/cli"
 	config "github.com/qiniu/logkit/conf"
 	_ "github.com/qiniu/logkit/metric/all"
 	"github.com/qiniu/logkit/mgr"
 	"github.com/qiniu/logkit/times"
 	_ "github.com/qiniu/logkit/transforms/all"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
+	utilsos "github.com/qiniu/logkit/utils/os"
+
+	"github.com/qiniu/log"
 
 	"github.com/labstack/echo"
+	"github.com/qiniu/logkit/plugin"
 	"io/ioutil"
 	"net"
 	"net/url"
@@ -45,6 +48,7 @@ type Config struct {
 	CleanSelfLogCnt  int      `json:"clean_self_cnt"`
 	StaticRootPath   string   `json:"static_root_path"`
 	mgr.ManagerConfig
+	Plugin plugin.Config `json:"plugin"`
 }
 
 var DEFAULT_PORT = "8100"
@@ -52,7 +56,7 @@ var DEFAULT_PORT = "8100"
 var conf Config
 
 const (
-	NextVersion       = "v1.4.2"
+	NextVersion       = "v1.4.8"
 	defaultReserveCnt = 5
 	defaultLogDir     = "./run"
 	defaultLogPattern = "*.log-*"
@@ -285,7 +289,7 @@ func main() {
 	switch {
 	case *fversion:
 		fmt.Println("logkit version: ", NextVersion)
-		osInfo := utils.GetOSInfo()
+		osInfo := utilsos.GetOSInfo()
 		fmt.Println("Hostname: ", osInfo.Hostname)
 		fmt.Println("Core: ", osInfo.Core)
 		fmt.Println("OS: ", osInfo.OS)
@@ -298,6 +302,15 @@ func main() {
 
 	if err := config.LoadEx(&conf, *confName); err != nil {
 		log.Fatal("config.Load failed:", err)
+	}
+	//plugin配置f
+	plugin.Conf = &conf.Plugin
+	//同步本地插件
+	if plugin.Conf.Enabled == true {
+		err := plugin.SyncPlugins()
+		if err != nil {
+			log.Fatal("sync plugin failed:", err)
+		}
 	}
 
 	if conf.TimeLayouts != nil {
@@ -322,7 +335,7 @@ func main() {
 	}
 
 	if conf.LogPath != "" {
-		logdir, logpattern, err := utils.LogDirAndPattern(conf.LogPath)
+		logdir, logpattern, err := LogDirAndPattern(conf.LogPath)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -359,11 +372,11 @@ func main() {
 	//	m.BindHost = conf.BindIP+":"+conf.BindPort
 	//}
 
-	if *startPort != ""{
+	if *startPort != "" {
 		m.BindHost = conf.BindIP + ":" + *startPort
-	}else if len(conf.BindPort) != 0{
+	} else if len(conf.BindPort) != 0 {
 		m.BindHost = conf.BindIP + ":" + conf.BindPort
-	}else{
+	} else {
 		m.BindHost = conf.BindIP + ":" + DEFAULT_PORT
 	}
 
@@ -376,9 +389,9 @@ func main() {
 	rs.PostParserCheck()
 
 	if conf.ProfileHost != "" {
-		log.Printf("profile_host was open at %v", conf.ProfileHost)
+		log.Infof("go profile_host was open at %v", conf.ProfileHost)
 		go func() {
-			log.Println(http.ListenAndServe(conf.ProfileHost, nil))
+			log.Info(http.ListenAndServe(conf.ProfileHost, nil))
 		}()
 	}
 	if err = rs.Register(); err != nil {
@@ -392,7 +405,7 @@ func main() {
 		sendBlogic(*blogicUrl, conf.Tenant, conf.BindIP, bindPort)
 	}
 
-	utils.WaitForInterrupt(func() {
+	utilsos.WaitForInterrupt(func() {
 		rs.Stop()
 		if conf.CleanSelfLog {
 			stopClean <- struct{}{}

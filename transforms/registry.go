@@ -1,8 +1,7 @@
 package transforms
 
 import (
-	"github.com/qiniu/logkit/sender"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
 )
 
 const (
@@ -10,9 +9,11 @@ const (
 )
 
 const (
-	TransformTypeString = "string"
-	TransformTypeLong   = "long"
-	TransformTypeFloat  = "float"
+	TransformTypeString  = "string"
+	TransformTypeLong    = "long"
+	TransformTypeFloat   = "float"
+	TransformTypeBoolean = "bool"
+	TransformTypeByte    = "[]byte"
 )
 
 const (
@@ -25,12 +26,12 @@ const (
 type Transformer interface {
 	Description() string
 	SampleConfig() string
-	ConfigOptions() []utils.Option
+	ConfigOptions() []Option
 	Type() string
-	Transform([]sender.Data) ([]sender.Data, error)
+	Transform([]Data) ([]Data, error)
 	RawTransform([]string) ([]string, error)
 	Stage() string
-	Stats() utils.StatsInfo
+	Stats() StatsInfo
 }
 
 //transformer初始化方法接口,err不为空表示初始化失败
@@ -47,7 +48,7 @@ func Add(name string, creator Creator) {
 }
 
 var (
-	KeyStage = utils.Option{
+	KeyStage = Option{
 		KeyName:       "stage",
 		ChooseOnly:    true,
 		ChooseOptions: []interface{}{StageAfterParser, StageBeforeParser},
@@ -56,30 +57,43 @@ var (
 		Description:   "transform运行的阶段(parser前还是parser后)(stage)",
 		Type:          TransformTypeString,
 	}
-	KeyStageAfterOnly = utils.Option{
-		KeyName:       "stage",
-		ChooseOnly:    true,
-		ChooseOptions: []interface{}{StageAfterParser},
-		Default:       StageAfterParser,
-		DefaultNoUse:  false,
-		Description:   "transform运行的阶段(stage)",
-		Type:          TransformTypeString,
-	}
-	KeyFieldName = utils.Option{
+	KeyFieldName = Option{
 		KeyName:      "key",
 		ChooseOnly:   false,
-		Default:      "my_field_keyname",
+		Default:      "",
+		Required:     true,
+		Placeholder:  "my_field_keyname",
 		DefaultNoUse: true,
 		Description:  "要进行Transform变化的键(key)",
 		Type:         TransformTypeString,
 	}
-	KeyTimezoneoffset = utils.Option{
+	KeyFieldNew = Option{
+		KeyName:      "new",
+		ChooseOnly:   false,
+		Default:      "",
+		Required:     false,
+		Placeholder:  "new_field_keyname",
+		DefaultNoUse: false,
+		Description:  "新的字段名(new)",
+		Type:         TransformTypeString,
+	}
+	KeyFieldNewRequired = Option{
+		KeyName:      "new",
+		ChooseOnly:   false,
+		Default:      "",
+		Required:     true,
+		Placeholder:  "new_field_keyname",
+		DefaultNoUse: false,
+		Description:  "解析后数据的字段名(new)",
+		Type:         TransformTypeString,
+	}
+	KeyTimezoneoffset = Option{
 		KeyName:    "offset",
 		ChooseOnly: true,
 		ChooseOptions: []interface{}{0, -1, -2, -3, -4,
 			-5, -6, -7, -8, -9, -10, -11, -12,
 			1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12},
-		Default:      "0",
+		Default:      0,
 		DefaultNoUse: false,
 		Description:  "时区偏移量(offset)",
 		CheckRegex:   "*",

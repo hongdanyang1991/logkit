@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/qiniu/log"
 	"github.com/qiniu/logkit/conf"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
 	"github.com/qiniu/pandora-go-sdk/base/reqerr"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,6 +34,7 @@ func TestFtSender(t *testing.T) {
 		reqRateLimit:   0,
 		flowRateLimit:  0,
 		gzip:           false,
+		tokenLock:      new(sync.RWMutex),
 	}
 	s, err := newPandoraSender(opt)
 	if err != nil {
@@ -50,7 +51,7 @@ func TestFtSender(t *testing.T) {
 		{"ab": "E18111:"},
 	}
 	err = fts.Send(datas)
-	se, ok := err.(*utils.StatsError)
+	se, ok := err.(*StatsError)
 	if !ok {
 		t.Fatal("ft send return error should .(*SendError)")
 	}
@@ -81,6 +82,7 @@ func TestFtMemorySender(t *testing.T) {
 		reqRateLimit:   0,
 		flowRateLimit:  0,
 		gzip:           false,
+		tokenLock:      new(sync.RWMutex),
 	}
 	s, err := newPandoraSender(opt)
 	if err != nil {
@@ -98,7 +100,7 @@ func TestFtMemorySender(t *testing.T) {
 		{"ab": "E18111:"},
 	}
 	err = fts.Send(datas)
-	se, ok := err.(*utils.StatsError)
+	se, ok := err.(*StatsError)
 	if !ok {
 		t.Fatal("ft send return error should .(*SendError)")
 	}
@@ -129,6 +131,7 @@ func TestFtChannelFullSender(t *testing.T) {
 		reqRateLimit:   0,
 		flowRateLimit:  0,
 		gzip:           false,
+		tokenLock:      new(sync.RWMutex),
 	}
 	s, err := newPandoraSender(opt)
 	if err != nil {
@@ -150,7 +153,7 @@ func TestFtChannelFullSender(t *testing.T) {
 		err = fts.Send([]Data{
 			{"a": i},
 		})
-		se, ok := err.(*utils.StatsError)
+		se, ok := err.(*StatsError)
 		if !ok {
 			t.Fatal("ft send return error should .(*StatsError)")
 		}
@@ -171,7 +174,7 @@ func TestFtChannelFullSender(t *testing.T) {
 		for _, v := range moreDatas {
 			time.Sleep(100 * time.Millisecond)
 			err = fts.Send(v)
-			se, ok := err.(*utils.StatsError)
+			se, ok := err.(*StatsError)
 			if !ok {
 				t.Fatal("ft send return error should .(*SendError)")
 			}
@@ -216,7 +219,7 @@ func TestFtSenderConcurrent(t *testing.T) {
 	}
 	for i := 0; i < 100; i++ {
 		err = fts.Send(datas)
-		se, ok := err.(*utils.StatsError)
+		se, ok := err.(*StatsError)
 		if !ok {
 			t.Fatal("ft send return error should .(*SendError)")
 		}
@@ -271,7 +274,7 @@ func ftSenderConcurrent(b *testing.B, c conf.MapConf) {
 	for i := 0; i < b.N; i++ {
 		for {
 			err = fts.Send(datas)
-			se, _ := err.(*utils.StatsError)
+			se, _ := err.(*StatsError)
 			if se.ErrorDetail == nil {
 				break
 			}
@@ -282,4 +285,86 @@ func ftSenderConcurrent(b *testing.B, c conf.MapConf) {
 	ms := s.(*MockSender)
 	b.Logf("Benchmark.N: %d", b.N)
 	b.Logf("MockSender.SendCount: %d", ms.SendCount())
+}
+
+func TestFtSenderConvertData(t *testing.T) {
+	tmpDir, err := ioutil.TempDir("", fmt.Sprintf("nsq-test-%d", time.Now().UnixNano()))
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(tmpDir)
+	mockP, pt := NewMockPandoraWithPrefix("/v2")
+	opt := &PandoraOption{
+		name:           "p",
+		repoName:       "TestFtSenderConvertData",
+		region:         "nb",
+		endpoint:       "http://127.0.0.1:" + pt,
+		ak:             "ak",
+		sk:             "sk",
+		schemaFree:     true,
+		updateInterval: time.Second,
+		reqRateLimit:   0,
+		flowRateLimit:  0,
+		gzip:           false,
+		tokenLock:      new(sync.RWMutex),
+	}
+	s, err := newPandoraSender(opt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mockP.SetMux.Lock()
+	mockP.PostSleep = 1
+	mockP.SetMux.Unlock()
+	mp := conf.MapConf{}
+	mp[KeyFtSaveLogPath] = tmpDir
+	mp[KeyFtMemoryChannel] = "false"
+	mp[KeyFtStrategy] = KeyFtStrategyBackupOnly
+	fts, err := NewFtSender(s, mp, tmpDir)
+	assert.NoError(t, err)
+	expStr := []string{"a=typeBinaryUnpack", `pandora_stash={"a":"typeBinaryUnpack"}`, "a=typeBinaryUnpack", `pandora_stash={"a":"typeBinaryUnpack"}`}
+
+	exitChan := make(chan string)
+	go func() {
+		now := time.Now()
+		curIndex := 0
+		for {
+			mockP.BodyMux.RLock()
+			if mockP.Body == expStr[curIndex] {
+				curIndex += 1
+				if curIndex%2 != 0 {
+					exitChan <- mockP.Body
+				}
+			}
+			mockP.BodyMux.RUnlock()
+			if curIndex == 4 {
+				break
+			}
+			if time.Now().Sub(now).Seconds() > 10 {
+				break
+			}
+			time.Sleep(300 * time.Millisecond)
+		}
+		assert.Equal(t, 4, curIndex)
+	}()
+
+	var moreDatas [][]Data
+	for i := 0; i < 2; i++ {
+		err = fts.Send([]Data{
+			{"a": "typeBinaryUnpack"},
+		})
+		se, ok := err.(*StatsError)
+		if !ok {
+			t.Fatal("ft send return error should .(*StatsError)")
+		}
+		if se.ErrorDetail != nil {
+			sx, succ := se.ErrorDetail.(*reqerr.SendError)
+			if succ {
+				datas := ConvertDatas(sx.GetFailDatas())
+				moreDatas = append(moreDatas, datas)
+			} else if !(se.Ft && se.FtNotRetry) {
+				t.Fatal("ft send StatsError error should contains send error", se.ErrorDetail)
+			}
+		}
+		<-exitChan
+	}
 }

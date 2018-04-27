@@ -17,13 +17,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labstack/echo"
-	"github.com/qiniu/log"
 	"github.com/qiniu/logkit/conf"
 	"github.com/qiniu/logkit/times"
-	"github.com/qiniu/logkit/utils"
-	"github.com/qiniu/pandora-go-sdk/base/reqerr"
+	. "github.com/qiniu/logkit/utils/models"
+
+	"github.com/qiniu/log"
 	"github.com/qiniu/pandora-go-sdk/pipeline"
+
+	"github.com/json-iterator/go"
+	"github.com/labstack/echo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,6 +33,7 @@ type mock_pandora struct {
 	Prefix      string
 	Port        string
 	Body        string
+	BodyMux     *sync.RWMutex
 	Schemas     []pipeline.RepoSchemaEntry
 	GetRepoErr  bool
 	PostSleep   int
@@ -40,7 +43,7 @@ type mock_pandora struct {
 
 //NewMockPandoraWithPrefix 测试的mock pandora server
 func NewMockPandoraWithPrefix(prefix string) (*mock_pandora, string) {
-	pandora := &mock_pandora{Prefix: prefix, SetMux: sync.Mutex{}}
+	pandora := &mock_pandora{Prefix: prefix, SetMux: sync.Mutex{}, BodyMux: new(sync.RWMutex)}
 
 	mux := echo.New()
 	mux.GET(prefix+"/ping", pandora.GetPing())
@@ -128,7 +131,7 @@ func (s *mock_pandora) PostRepos_Data() echo.HandlerFunc {
 		if req.Header.Get("Content-Encoding") == "gzip" {
 			reqBody, err := gzip.NewReader(req.Body)
 			if err != nil {
-				return c.JSON(http.StatusInternalServerError, utils.NewErrorResponse(errors.New("gzip reader error")))
+				return c.JSON(http.StatusInternalServerError, NewErrorResponse(errors.New("gzip reader error")))
 			}
 			reqBody.Close()
 			r = bufio.NewReader(reqBody)
@@ -141,13 +144,18 @@ func (s *mock_pandora) PostRepos_Data() echo.HandlerFunc {
 			log.Println("post repo readall error")
 			return c.NoContent(http.StatusInternalServerError)
 		}
-		s.Body = string(bytesx)
-		sep := strings.Fields(s.Body)
+		sep := strings.Fields(string(bytesx))
 		sort.Strings(sep)
+		s.BodyMux.Lock()
+		defer s.BodyMux.Unlock()
 		s.Body = strings.Join(sep, " ")
 		log.Println("get datas: ", s.Body)
 		if strings.Contains(s.Body, "E18111") {
-			return c.JSON(http.StatusNotFound, utils.NewErrorResponse(errors.New("E18111 mock_pandora error")))
+			return c.JSON(http.StatusNotFound, NewErrorResponse(errors.New("E18111 mock_pandora error")))
+		} else if strings.Contains(s.Body, "typeBinaryUnpack") && !strings.Contains(s.Body, KeyPandoraStash) {
+			c.Response().Header().Set(ContentTypeHeader, ApplicationJson)
+			c.Response().WriteHeader(http.StatusBadRequest)
+			return jsoniter.NewEncoder(c.Response()).Encode(map[string]string{"error": "E18111 mock_pandora error"})
 		}
 		s.PostDataNum++
 		return nil
@@ -197,7 +205,6 @@ func (s *mock_pandora) LetGetRepoError(f bool) {
 
 func TestPandoraSender(t *testing.T) {
 	pandora, pt := NewMockPandoraWithPrefix("/v2")
-	pandora.LetGetRepoError(true)
 	opt := &PandoraOption{
 		name:               "p",
 		repoName:           "TestPandoraSender",
@@ -213,6 +220,7 @@ func TestPandoraSender(t *testing.T) {
 		ignoreInvalidField: true,
 		autoConvertDate:    true,
 		gzip:               true,
+		tokenLock:          new(sync.RWMutex),
 	}
 	s, err := newPandoraSender(opt)
 	if err != nil {
@@ -224,21 +232,7 @@ func TestPandoraSender(t *testing.T) {
 	d["ac"] = 2
 	d["d"] = 14773736325048765
 	err = s.Send([]Data{d})
-	if err == nil {
-		t.Error(fmt.Errorf("should get as send LetGetRepoError error but nil"))
-	}
-	sts, ok := err.(*utils.StatsError)
-	if !ok {
-		t.Error("should pasred as State Error")
-	}
-	err = sts.ErrorDetail
-	se, ok := err.(*reqerr.SendError)
-	if !ok {
-		t.Error("should pasred as Send Error")
-	}
-	pandora.LetGetRepoError(false)
-	err = s.Send(ConvertDatas(se.GetFailDatas()))
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -263,7 +257,7 @@ func TestPandoraSender(t *testing.T) {
 	}
 	d = Data{"ab": "h1"}
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -277,7 +271,7 @@ func TestPandoraSender(t *testing.T) {
 	d["ab"] = "h"
 	d["d"] = "2016/11/01 12:00:00.123456" + zoneValue
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -292,14 +286,14 @@ func TestPandoraSender(t *testing.T) {
 	dataJson := `{"ab":"REQ","ac":200,"d":14774559431867215}`
 
 	d = Data{}
-	jsonDecoder := json.NewDecoder(bytes.NewReader([]byte(dataJson)))
+	jsonDecoder := jsoniter.NewDecoder(bytes.NewReader([]byte(dataJson)))
 	jsonDecoder.UseNumber()
 	err = jsonDecoder.Decode(&d)
 	if err != nil {
 		t.Error(err)
 	}
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -346,7 +340,7 @@ func TestPandoraSender(t *testing.T) {
 	d["ax"] = "b"
 	s.opt.updateInterval = 0
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -375,6 +369,7 @@ func TestNestPandoraSender(t *testing.T) {
 		reqRateLimit:   0,
 		flowRateLimit:  0,
 		gzip:           false,
+		tokenLock:      new(sync.RWMutex),
 	}
 	s, err := newPandoraSender(opt)
 	if err != nil {
@@ -393,7 +388,7 @@ func TestNestPandoraSender(t *testing.T) {
 		},
 	}
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -423,6 +418,7 @@ func TestUUIDPandoraSender(t *testing.T) {
 		gzip:           false,
 		uuid:           true,
 		schemaFree:     true,
+		tokenLock:      new(sync.RWMutex),
 	}
 	s, err := newPandoraSender(opt)
 	if err != nil {
@@ -431,7 +427,7 @@ func TestUUIDPandoraSender(t *testing.T) {
 	d := Data{}
 	d["x1"] = "hh"
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -458,6 +454,7 @@ func TestStatsSender(t *testing.T) {
 		autoCreate:     "x1 s",
 		updateInterval: time.Second,
 		schemaFree:     true,
+		tokenLock:      new(sync.RWMutex),
 	}
 	s, err := newPandoraSender(opt)
 	if err != nil {
@@ -466,7 +463,7 @@ func TestStatsSender(t *testing.T) {
 	d := Data{}
 	d["x1"] = "hh"
 	err = s.Send([]Data{d})
-	st, ok := err.(*utils.StatsError)
+	st, ok := err.(*StatsError)
 	assert.Equal(t, true, ok)
 	assert.NoError(t, st.ErrorDetail)
 	assert.Equal(t, st.Success, int64(1))
@@ -572,7 +569,7 @@ func TestSuppurtedTimeFormat(t *testing.T) {
 		assert.NoError(t, err)
 		expTimeStamp := expTime.UnixNano()
 
-		assert.Equal(t, timestampPrecision, len(strconv.FormatInt(gotTimeStamp, 10)))
+		assert.Equal(t, TimestampPrecision, len(strconv.FormatInt(gotTimeStamp, 10)))
 		assert.Equal(t, force, gotTimeStamp-expTimeStamp)
 	}
 }
@@ -599,9 +596,10 @@ func Benchmark_TimeFormat(b *testing.B) {
 
 func TestValidSchema(t *testing.T) {
 	tests := []struct {
-		v   interface{}
-		t   string
-		exp bool
+		v             interface{}
+		t             string
+		numberAsFloat bool
+		exp           bool
 	}{
 		{
 			v:   1,
@@ -614,9 +612,21 @@ func TestValidSchema(t *testing.T) {
 			exp: false,
 		},
 		{
+			v:             2.1,
+			t:             "long",
+			numberAsFloat: true,
+			exp:           true,
+		},
+		{
 			v:   json.Number("1.0"),
 			t:   "long",
 			exp: false,
+		},
+		{
+			v:             json.Number("1.1"),
+			t:             "long",
+			numberAsFloat: true,
+			exp:           true,
 		},
 		{
 			v:   json.Number("2.0"),
@@ -695,7 +705,7 @@ func TestValidSchema(t *testing.T) {
 		},
 	}
 	for idx, ti := range tests {
-		got := validSchema(ti.t, ti.v)
+		got := validSchema(ti.t, ti.v, ti.numberAsFloat)
 		if got != ti.exp {
 			t.Errorf("case %v %v exp %v but got %v", idx, ti, ti.exp, got)
 		}
@@ -764,6 +774,7 @@ func TestUpdatePandoraSchema(t *testing.T) {
 		schema:         "x3 x3change,x4,...",
 		schemaFree:     true,
 		updateInterval: time.Second,
+		tokenLock:      new(sync.RWMutex),
 	}
 	s, err := newPandoraSender(opt)
 	if err != nil {
@@ -772,7 +783,7 @@ func TestUpdatePandoraSchema(t *testing.T) {
 	d := Data{}
 	d["x1"] = "hh"
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -784,7 +795,7 @@ func TestUpdatePandoraSchema(t *testing.T) {
 	}
 	d["x2"] = 2
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -809,7 +820,7 @@ func TestUpdatePandoraSchema(t *testing.T) {
 	d["x2"] = 2
 	d["x3"] = 2.1
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -847,6 +858,7 @@ func TestUpdatePandoraSchema(t *testing.T) {
 		schema:         "x3 x3change,x4",
 		schemaFree:     true,
 		updateInterval: time.Second,
+		tokenLock:      new(sync.RWMutex),
 	}
 	s, err = newPandoraSender(opt)
 	if err != nil {
@@ -856,7 +868,7 @@ func TestUpdatePandoraSchema(t *testing.T) {
 	tm := time.Now().Format(time.RFC3339)
 	d["x3"] = tm
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -876,7 +888,7 @@ func TestUpdatePandoraSchema(t *testing.T) {
 	d["x3"] = tm
 	d["x4"] = 1
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -970,6 +982,7 @@ func TestConvertDataPandoraSender(t *testing.T) {
 		autoCreate:       "x1 long",
 		schemaFree:       true,
 		forceDataConvert: true,
+		tokenLock:        new(sync.RWMutex),
 	}
 	s, err := newPandoraSender(opt)
 	if err != nil {
@@ -978,7 +991,7 @@ func TestConvertDataPandoraSender(t *testing.T) {
 	d := Data{}
 	d["x1"] = "123.2"
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -1018,7 +1031,7 @@ func TestPandoraSenderTime(t *testing.T) {
 	d := Data{}
 	d["x1"] = "123.2"
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -1051,7 +1064,7 @@ func TestPandoraSenderTime(t *testing.T) {
 	d = Data{}
 	d["x1"] = "123.2"
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -1108,7 +1121,7 @@ func TestPandoraSenderTime(t *testing.T) {
 	d = Data{}
 	d["x1"] = "123.2"
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -1152,7 +1165,7 @@ func TestPandoraExtraInfo(t *testing.T) {
 	d["hostname2"] = "123.2"
 	d["osinfo"] = "123.2"
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {
@@ -1194,7 +1207,7 @@ func TestPandoraExtraInfo(t *testing.T) {
 	d = Data{}
 	d["x1"] = "123.2"
 	err = s.Send([]Data{d})
-	if st, ok := err.(*utils.StatsError); ok {
+	if st, ok := err.(*StatsError); ok {
 		err = st.ErrorDetail
 	}
 	if err != nil {

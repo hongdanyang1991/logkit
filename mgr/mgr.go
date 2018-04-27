@@ -1,6 +1,7 @@
 package mgr
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,10 +15,14 @@ import (
 	config "github.com/qiniu/logkit/conf"
 	"github.com/qiniu/logkit/parser"
 	"github.com/qiniu/logkit/sender"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
+	utilsos "github.com/qiniu/logkit/utils/os"
+
+	"github.com/qiniu/log"
 
 	"github.com/howeyc/fsnotify"
-	"github.com/qiniu/log"
+	"github.com/json-iterator/go"
+	"github.com/qiniu/logkit/reader"
 )
 
 var DIR_NOT_EXIST_SLEEP_TIME = "300" //300 s
@@ -26,10 +31,12 @@ var DEFAULT_LOGKIT_REST_DIR = "/.logkitconfs"
 type ManagerConfig struct {
 	BindHost string `json:"bind_host"`
 
-	Idc     string        `json:"idc"`
-	Zone    string        `json:"zone"`
-	RestDir string        `json:"rest_dir"`
-	Cluster ClusterConfig `json:"cluster"`
+	Idc          string        `json:"idc"`
+	Zone         string        `json:"zone"`
+	RestDir      string        `json:"rest_dir"`
+	Cluster      ClusterConfig `json:"cluster"`
+	DisableWeb   bool          `json:"disable_web"`
+	ServerBackup bool          `json:"-"`
 }
 
 type cleanQueue struct {
@@ -51,6 +58,7 @@ type Manager struct {
 	watchers  map[string]*fsnotify.Watcher // inode到watcher的映射表
 	pregistry *parser.ParserRegistry
 	sregistry *sender.SenderRegistry
+	rregistry *reader.ReaderRegistry
 
 	Version    string
 	SystemInfo string
@@ -59,17 +67,25 @@ type Manager struct {
 func NewManager(conf ManagerConfig) (*Manager, error) {
 	ps := parser.NewParserRegistry()
 	sr := sender.NewSenderRegistry()
-	return NewCustomManager(conf, ps, sr)
+	rr := reader.NewReaderRegistry()
+	return NewCustomManager(conf, rr, ps, sr)
 }
 
-func NewCustomManager(conf ManagerConfig, pr *parser.ParserRegistry, sr *sender.SenderRegistry) (*Manager, error) {
+func NewCustomManager(conf ManagerConfig, rr *reader.ReaderRegistry, pr *parser.ParserRegistry, sr *sender.SenderRegistry) (*Manager, error) {
 	if conf.RestDir == "" {
 		dir, err := os.Getwd()
 		if err != nil {
 			return nil, fmt.Errorf("get system current workdir error %v, please set rest_dir config", err)
 		}
 		conf.RestDir = dir + DEFAULT_LOGKIT_REST_DIR
-		if err = os.Mkdir(conf.RestDir, 0755); err != nil && !os.IsExist(err) {
+	} else {
+		var err error
+		if conf.RestDir, err = filepath.Abs(conf.RestDir); err != nil {
+			return nil, err
+		}
+	}
+	if !conf.ServerBackup {
+		if err := os.MkdirAll(conf.RestDir, DefaultDirPerm); err != nil && !os.IsExist(err) {
 			log.Warnf("make dir for rest default dir error %v", err)
 		}
 	}
@@ -85,7 +101,8 @@ func NewCustomManager(conf ManagerConfig, pr *parser.ParserRegistry, sr *sender.
 		watchers:      make(map[string]*fsnotify.Watcher),
 		pregistry:     pr,
 		sregistry:     sr,
-		SystemInfo:    utils.GetOSInfo().String(),
+		rregistry:     rr,
+		SystemInfo:    utilsos.GetOSInfo().String(),
 	}
 	return m, nil
 }
@@ -197,7 +214,7 @@ func (m *Manager) Add(confPath string) {
 		return
 	}
 	log.Info("try add", confPath)
-	confPathAbs, _, err := utils.GetRealPath(confPath)
+	confPathAbs, _, err := GetRealPath(confPath)
 	if err != nil {
 		log.Warnf("filepath.Abs(%s) failed: %v", confPath)
 		return
@@ -245,10 +262,10 @@ func (m *Manager) ForkRunner(confPath string, nconf RunnerConfig, errReturn bool
 			} else {
 				webornot = "Terminal"
 			}
-			nconf.SenderConfig[k][sender.InnerUserAgent] = "logkit/" + m.Version + " " + m.SystemInfo + " " + webornot
+			nconf.SenderConfig[k][InnerUserAgent] = "logkit/" + m.Version + " " + m.SystemInfo + " " + webornot
 		}
 
-		if runner, err = NewCustomRunner(nconf, m.cleanChan, m.pregistry, m.sregistry); err != nil {
+		if runner, err = NewCustomRunner(nconf, m.cleanChan, m.rregistry, m.pregistry, m.sregistry); err != nil {
 			errVal, ok := err.(*os.PathError)
 			if !ok {
 				err = fmt.Errorf("NewRunner(%v) failed: %v", nconf.RunnerName, err)
@@ -318,6 +335,8 @@ func (m *Manager) handle(path string, watcher *fsnotify.Watcher) {
 					m.watcherMux.Lock()
 					delete(m.watchers, path)
 					m.watcherMux.Unlock()
+					// TODO 此处代表文件夹被删了，只移除一个runner可能不够，文件夹下会有其他runner没有被删除
+					m.Remove(ev.Name)
 					return
 				}
 				m.Remove(ev.Name)
@@ -341,10 +360,9 @@ func (m *Manager) doClean(sig cleaner.CleanSignal) {
 	m.cleanLock.Lock()
 	defer m.cleanLock.Unlock()
 
-	dir := sig.Logdir
-	dir, err := filepath.Abs(dir)
+	dir, _, err := GetRealPath(sig.Logdir)
 	if err != nil {
-		log.Errorf("get abs for %v error %v", dir, err)
+		log.Errorf("get GetRealPath for %v error %v", dir, err)
 		return
 	}
 	file := sig.Filename
@@ -481,10 +499,10 @@ func (m *Manager) Status() (rss map[string]RunnerStatus) {
 		} else {
 			rss[conf.RunnerName] = RunnerStatus{
 				Name:           conf.RunnerName,
-				ReaderStats:    utils.StatsInfo{},
-				ParserStats:    utils.StatsInfo{},
-				TransformStats: make(map[string]utils.StatsInfo),
-				SenderStats:    make(map[string]utils.StatsInfo),
+				ReaderStats:    StatsInfo{},
+				ParserStats:    StatsInfo{},
+				TransformStats: make(map[string]StatsInfo),
+				SenderStats:    make(map[string]StatsInfo),
 				RunningStatus:  RunnerStopped,
 			}
 		}
@@ -503,10 +521,10 @@ func (m *Manager) GetRunnerStatus(runnerName string) (rs RunnerStatus, err error
 			} else {
 				rs = RunnerStatus{
 					Name:           conf.RunnerName,
-					ReaderStats:    utils.StatsInfo{},
-					ParserStats:    utils.StatsInfo{},
-					TransformStats: make(map[string]utils.StatsInfo),
-					SenderStats:    make(map[string]utils.StatsInfo),
+					ReaderStats:    StatsInfo{},
+					ParserStats:    StatsInfo{},
+					TransformStats: make(map[string]StatsInfo),
+					SenderStats:    make(map[string]StatsInfo),
 					RunningStatus:  RunnerStopped,
 				}
 			}
@@ -518,26 +536,330 @@ func (m *Manager) GetRunnerStatus(runnerName string) (rs RunnerStatus, err error
 }
 
 func (m *Manager) Configs() (rss map[string]RunnerConfig) {
-	//var err error
-	//var tmpRssByte []byte
 	rss = make(map[string]RunnerConfig)
 	tmpRss := make(map[string]RunnerConfig)
 	m.lock.RLock()
-	defer m.lock.RUnlock()
 	for k, v := range m.runnerConfig {
 		if filepath.Dir(k) == m.RestDir {
 			v.IsInWebFolder = true
 		}
 		tmpRss[k] = v
 	}
-	deepCopy(&rss, &tmpRss)
-	//if tmpRssByte, err = json.Marshal(tmpRss); err != nil {
-	//	log.Debugf("runner configs marshal error %v", err)
-	//	return tmpRss
-	//}
-	//if err = json.Unmarshal(tmpRssByte, &rss); err != nil {
-	//	log.Debugf("runner configs unmarshal error %v", err)
-	//	return tmpRss
-	//}
+	deepCopyByJson(&rss, &tmpRss)
+	m.lock.RUnlock()
+	for k, v := range rss {
+		rss[k] = TrimSecretInfo(v)
+	}
+	return
+}
+
+func (m *Manager) getDeepCopyConfig(name string) (filename string, conf RunnerConfig, err error) {
+	filename = filepath.Join(m.RestDir, name+".conf")
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	if tmpConf, ok := m.runnerConfig[filename]; !ok {
+		err = fmt.Errorf("runner %v is not found", filename)
+	} else {
+		deepCopyByJson(&conf, &tmpConf)
+	}
+	return
+}
+
+// TrimSecretInfo 将配置文件中的 token 信息去掉
+func TrimSecretInfo(conf RunnerConfig) RunnerConfig {
+	preFix := SchemaFreeTokensPrefix
+	keyName := []string{
+		preFix + "pipeline_get_repo_token",
+		preFix + "pipeline_post_data_token",
+		preFix + "pipeline_create_repo_token",
+		preFix + "pipeline_update_repo_token",
+		preFix + "pipeline_get_workflow_token",
+		preFix + "pipeline_stop_workflow_token",
+		preFix + "pipeline_start_workflow_token",
+		preFix + "pipeline_create_workflow_token",
+		preFix + "pipeline_Get_workflow_status_token",
+	}
+
+	// logDB tokens
+	preFix = LogDBTokensPrefix
+	keyName = append(keyName, []string{
+		preFix + "pipeline_get_repo_token",
+		preFix + "pipeline_create_repo_token",
+		preFix + "create_logdb_repo_token",
+		preFix + "update_logdb_repo_token",
+		preFix + "get_logdb_repo_token",
+		preFix + "create_export_token",
+		preFix + "update_export_token",
+		preFix + "get_export_token",
+		preFix + "list_export_token",
+	}...)
+
+	// tsDB tokens
+	preFix = TsDBTokensPrefix
+	keyName = append(keyName, []string{
+		preFix + "pipeline_get_repo_token",
+		preFix + "create_tsdb_repo_token",
+		preFix + "list_export_token",
+		preFix + "create_tsdb_series_token",
+		preFix + "create_export_token",
+		preFix + "update_export_token",
+		preFix + "get_export_token",
+	}...)
+
+	// kodo tokens
+	preFix = KodoTokensPrefix
+	keyName = append(keyName, []string{
+		preFix + "pipeline_get_repo_token",
+		preFix + "create_export_token",
+		preFix + "update_export_token",
+		preFix + "get_export_token",
+		preFix + "list_export_token",
+	}...)
+
+	for i, sc := range conf.SenderConfig {
+		for _, k := range keyName {
+			delete(sc, k)
+		}
+		conf.SenderConfig[i] = sc
+	}
+	return conf
+}
+
+func (m *Manager) backupRunnerConfig(filename string, rconf RunnerConfig) error {
+	if m.ServerBackup {
+		return nil
+	}
+	confBytes, err := jsoniter.MarshalIndent(rconf, "", "    ")
+	if err != nil {
+		return fmt.Errorf("runner config %v marshal failed, err is %v", rconf, err)
+	}
+	// 判断默认备份文件夹是否存在，不存在就尝试创建
+	if _, err := os.Stat(m.RestDir); err != nil {
+		if os.IsNotExist(err) {
+			if err = os.Mkdir(m.RestDir, DefaultDirPerm); err != nil && !os.IsExist(err) {
+				return fmt.Errorf("rest default dir not exists and make dir failed, err is %v", err)
+			}
+		}
+	}
+	return ioutil.WriteFile(filename, confBytes, 0644)
+}
+
+func (m *Manager) UpdateToken(tokens []AuthTokens) (err error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	errMsg := make([]string, 0)
+	for _, token := range tokens {
+		runnerPath := token.RunnerName
+		if runner, ok := m.runners[runnerPath]; ok {
+			if r, ok := runner.(TokenRefreshable); ok {
+				token.RunnerName = runner.Name()
+				if subErr := r.TokenRefresh(token); subErr != nil {
+					errMsg = append(errMsg, subErr.Error())
+					continue
+				}
+			}
+		}
+		if c, ok := m.runnerConfig[runnerPath]; ok {
+			if len(c.SenderConfig) > token.SenderIndex {
+				for k, t := range token.SenderTokens {
+					c.SenderConfig[token.SenderIndex][k] = t
+				}
+			}
+			m.runnerConfig[runnerPath] = c
+		}
+	}
+	if len(errMsg) != 0 {
+		err = errors.New(strings.Join(errMsg, "\n"))
+	}
+	return
+}
+
+func (m *Manager) AddRunner(name string, conf RunnerConfig) (err error) {
+	conf.RunnerName = name
+	conf.CreateTime = time.Now().Format(time.RFC3339Nano)
+	filename := filepath.Join(m.RestDir, name+".conf")
+	if m.isRunning(filename) {
+		return fmt.Errorf("file %v runner is running", name)
+	}
+	if err = m.ForkRunner(filename, conf, true); err != nil {
+		return fmt.Errorf("forkRunner %v error %v", name, err)
+	}
+	if err = m.backupRunnerConfig(filename, conf); err != nil {
+		// 回滚, 删除创建的 runner, 备份配置文件失败，所以此处不需要从磁盘删除配置文件
+		if rollBackErr := m.Remove(filename); rollBackErr != nil {
+			log.Errorf("runner <%v> backup RunnerConfig error and rollback error %v", name, rollBackErr)
+		}
+	}
+	return
+}
+
+func (m *Manager) UpdateRunner(name string, conf RunnerConfig) (err error) {
+	filename, oldConf, err := m.getDeepCopyConfig(name)
+	if err != nil {
+		return err
+	}
+	conf.RunnerName = name
+	conf.CreateTime = time.Now().Format(time.RFC3339Nano)
+	if m.isRunning(filename) {
+		if subErr := m.Remove(filename); subErr != nil {
+			return fmt.Errorf("remove runner %v error %v", filename, subErr)
+		}
+	}
+	if err = m.ForkRunner(filename, conf, true); err != nil {
+		if subErr := m.ForkRunner(filename, oldConf, true); subErr != nil {
+			log.Errorf("forkRunner error and rollback old runner error %v", subErr)
+		}
+		return fmt.Errorf("forkRunner %v error %v", filename, err)
+	}
+	if err = m.backupRunnerConfig(filename, conf); err != nil {
+		// 备份配置失败，回滚
+		if subErr := m.Remove(filename); subErr != nil {
+			log.Errorf("runner %v update backup config error and rollback error %v", filename, subErr)
+		}
+		if subErr := m.ForkRunner(filename, oldConf, true); subErr != nil {
+			log.Errorf("runner %v update backup config error and rollback error %v", filename, subErr)
+		}
+	}
+	return
+}
+
+func (m *Manager) StartRunner(name string) (err error) {
+	filename, conf, err := m.getDeepCopyConfig(name)
+	if err != nil {
+		return err
+	}
+	if conf.IsStopped == false {
+		return fmt.Errorf("runner %v has already started", filename)
+	}
+	conf.IsStopped = false
+	if err = m.ForkRunner(filename, conf, true); err != nil {
+		return fmt.Errorf("forkRunner %v error %v", filename, err)
+	}
+	if err = m.backupRunnerConfig(filename, conf); err != nil {
+		// 备份配置文件失败，回滚
+		if subErr := m.RemoveWithConfig(filename, false); subErr != nil {
+			log.Errorf("runner %v start backup config error and rollback error %v", name, subErr)
+		} else {
+			conf.IsStopped = true
+			m.lock.Lock()
+			m.runnerConfig[filename] = conf
+			m.lock.Unlock()
+		}
+	}
+	return
+}
+
+func (m *Manager) StopRunner(name string) (err error) {
+	filename, conf, err := m.getDeepCopyConfig(name)
+	if err != nil {
+		return err
+	}
+	if conf.IsStopped == true {
+		return fmt.Errorf("runner %v has already stopped", filename)
+	}
+	conf.IsStopped = true
+	if !m.isRunning(filename) {
+		m.lock.Lock()
+		m.runnerConfig[filename] = conf
+		m.lock.Unlock()
+		return
+	}
+	if err = m.RemoveWithConfig(filename, false); err != nil {
+		return fmt.Errorf("remove runner %v error %v", filename, err)
+	}
+	m.lock.Lock()
+	m.runnerConfig[filename] = conf
+	m.lock.Unlock()
+	if err = m.backupRunnerConfig(filename, conf); err != nil {
+		// 备份配置文件失败，回滚
+		conf.IsStopped = false
+		if subErr := m.ForkRunner(filename, conf, true); subErr != nil {
+			log.Errorf("runner %v stop backup config error and rollback error %v", name, subErr)
+		}
+	}
+	return
+}
+
+//ResetRunner 必须在runner实例存在下才可以reset, reset是调用runner本身的方法，
+// 而runner stop实际上是销毁实例，所以先要启动runner
+func (m *Manager) ResetRunner(name string) (err error) {
+	filename, conf, err := m.getDeepCopyConfig(name)
+	if err != nil {
+		return err
+	}
+	status := conf.IsStopped
+	if conf.IsStopped {
+		conf.IsStopped = false
+		//此处先启动runner
+		if err = m.ForkRunner(filename, conf, true); err != nil {
+			return fmt.Errorf("start %v for reset error %v, as runner is only resetable for alive", filename, err)
+		}
+	}
+	m.lock.RLock()
+	r, runnerOk := m.runners[filename]
+	m.lock.RUnlock()
+	if !runnerOk {
+		return fmt.Errorf("runner %v is not found", filename)
+	}
+
+	runnerReset, ok := r.(Resetable)
+	if !ok {
+		//如果runner不支持reset函数，直接返回
+		return fmt.Errorf("runner %v is not resetable runner", filename)
+	}
+
+	if subErr := m.Remove(filename); subErr != nil {
+		log.Errorf("remove runner %v for reset error %v", filename, subErr)
+	}
+	conf.IsStopped = status
+	// 出错的话，回滚并报错
+	resetErr := runnerReset.Reset()
+	if resetErr != nil {
+		log.Errorf("reset runner %v error %v", filename, resetErr)
+		// 此处就算失败也了不能直接return，需要回滚
+	}
+	conf.IsStopped = false
+	err = m.ForkRunner(filename, conf, true)
+	if err != nil {
+		return fmt.Errorf("forkRunner %v for reset error %v, resetErr is %v", filename, err, resetErr)
+	}
+	if resetErr != nil {
+		err = resetErr
+	}
+	return
+}
+
+func (m *Manager) DeleteRunner(name string) (err error) {
+	filename, conf, err := m.getDeepCopyConfig(name)
+	if err != nil {
+		return err
+	}
+	if conf.IsStopped {
+		m.lock.Lock()
+		delete(m.runnerConfig, filename)
+		m.lock.Unlock()
+	}
+	m.lock.RLock()
+	r, runnerOk := m.runners[filename]
+	m.lock.RUnlock()
+	if runnerOk {
+		if err = m.Remove(filename); err != nil {
+			return fmt.Errorf("remove runner %v error %v", filename, err)
+		}
+		if runnerReset, ok := r.(Resetable); ok {
+			runnerReset.Reset()
+		}
+	}
+	if err = os.Remove(filename); err != nil {
+		if os.IsNotExist(err) {
+			err = nil
+			return
+		}
+		// 回滚
+		if subErr := m.ForkRunner(filename, conf, true); subErr != nil {
+			log.Errorf("remove runner %v error and rollback error %v", filename, subErr)
+		}
+		return fmt.Errorf("remove runner %v error %v", filename, err)
+	}
 	return
 }

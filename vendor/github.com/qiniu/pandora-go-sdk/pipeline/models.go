@@ -11,12 +11,9 @@ import (
 	"strings"
 
 	"github.com/qiniu/pandora-go-sdk/base"
+	. "github.com/qiniu/pandora-go-sdk/base/models"
 	"github.com/qiniu/pandora-go-sdk/base/reqerr"
 )
-
-type PipelineToken struct {
-	Token string `json:"-"`
-}
 
 const (
 	defaultRegion      = "nb"
@@ -60,6 +57,7 @@ const (
 	ExportTypeKODO  = "kodo"
 	ExportTypeHTTP  = "http"
 	ExportTypeMongo = "mongo"
+	ExportTypeHDFS  = "hdfs"
 )
 
 type Data map[string]interface{}
@@ -79,7 +77,7 @@ var schemaTypes = map[string]bool{
 func validateGroupName(g string) error {
 	matched, err := regexp.MatchString(groupNamePattern, g)
 	if err != nil {
-		return reqerr.NewInvalidArgs("GroupName", err.Error())
+		return reqerr.NewInvalidArgs("GroupName", err.Error()).WithComponent("pipleline")
 	}
 	if !matched {
 		return reqerr.NewInvalidArgs("GroupName", fmt.Sprintf("invalid group name: %s", g))
@@ -90,10 +88,10 @@ func validateGroupName(g string) error {
 func validateRepoName(r string) error {
 	matched, err := regexp.MatchString(repoNamePattern, r)
 	if err != nil {
-		return reqerr.NewInvalidArgs("RepoName", err.Error())
+		return reqerr.NewInvalidArgs("RepoName", err.Error()).WithComponent("pipleline")
 	}
 	if !matched {
-		return reqerr.NewInvalidArgs("RepoName", fmt.Sprintf("invalid repo name: %s", r))
+		return reqerr.NewInvalidArgs("RepoName", fmt.Sprintf("invalid repo name: %s", r)).WithComponent("pipleline")
 	}
 	return nil
 }
@@ -101,10 +99,10 @@ func validateRepoName(r string) error {
 func validateTransformName(t string) error {
 	matched, err := regexp.MatchString(transformNamePattern, t)
 	if err != nil {
-		return reqerr.NewInvalidArgs("TransformName", err.Error())
+		return reqerr.NewInvalidArgs("TransformName", err.Error()).WithComponent("pipleline")
 	}
 	if !matched {
-		return reqerr.NewInvalidArgs("TransformName", fmt.Sprintf("invalid transform name: %s", t))
+		return reqerr.NewInvalidArgs("TransformName", fmt.Sprintf("invalid transform name: %s", t)).WithComponent("pipleline")
 	}
 	return nil
 }
@@ -112,10 +110,10 @@ func validateTransformName(t string) error {
 func validateExportName(e string) error {
 	matched, err := regexp.MatchString(exportNamePattern, e)
 	if err != nil {
-		return reqerr.NewInvalidArgs("ExportName", err.Error())
+		return reqerr.NewInvalidArgs("ExportName", err.Error()).WithComponent("pipleline")
 	}
 	if !matched {
-		return reqerr.NewInvalidArgs("ExportName", fmt.Sprintf("invalid export name: %s", e))
+		return reqerr.NewInvalidArgs("ExportName", fmt.Sprintf("invalid export name: %s", e)).WithComponent("pipleline")
 	}
 	return nil
 }
@@ -123,10 +121,10 @@ func validateExportName(e string) error {
 func validatePluginName(p string) error {
 	matched, err := regexp.MatchString(pluginNamePattern, p)
 	if err != nil {
-		return reqerr.NewInvalidArgs("PluginName", err.Error())
+		return reqerr.NewInvalidArgs("PluginName", err.Error()).WithComponent("pipleline")
 	}
 	if !matched {
-		return reqerr.NewInvalidArgs("PluginName", fmt.Sprintf("invalid plugin name: %s", p))
+		return reqerr.NewInvalidArgs("PluginName", fmt.Sprintf("invalid plugin name: %s", p)).WithComponent("pipleline")
 	}
 	return nil
 }
@@ -134,10 +132,10 @@ func validatePluginName(p string) error {
 func validateDatasouceName(d string) error {
 	matched, err := regexp.MatchString(datasourceNamePattern, d)
 	if err != nil {
-		return reqerr.NewInvalidArgs("DatasourceName", err.Error())
+		return reqerr.NewInvalidArgs("DatasourceName", err.Error()).WithComponent("pipleline")
 	}
 	if !matched {
-		return reqerr.NewInvalidArgs("DatasourceName", fmt.Sprintf("invalid datasource name: %s", d))
+		return reqerr.NewInvalidArgs("DatasourceName", fmt.Sprintf("invalid datasource name: %s", d)).WithComponent("pipleline")
 	}
 	return nil
 }
@@ -145,10 +143,10 @@ func validateDatasouceName(d string) error {
 func validateJobName(j string) error {
 	matched, err := regexp.MatchString(datasourceNamePattern, j)
 	if err != nil {
-		return reqerr.NewInvalidArgs("JobName", err.Error())
+		return reqerr.NewInvalidArgs("JobName", err.Error()).WithComponent("pipleline")
 	}
 	if !matched {
-		return reqerr.NewInvalidArgs("JobName", fmt.Sprintf("invalid job name: %s", j))
+		return reqerr.NewInvalidArgs("JobName", fmt.Sprintf("invalid job name: %s", j)).WithComponent("pipleline")
 	}
 	return nil
 }
@@ -156,10 +154,10 @@ func validateJobName(j string) error {
 func validateJobexportName(e string) error {
 	matched, err := regexp.MatchString(datasourceNamePattern, e)
 	if err != nil {
-		return reqerr.NewInvalidArgs("JobexportName", err.Error())
+		return reqerr.NewInvalidArgs("JobexportName", err.Error()).WithComponent("pipleline")
 	}
 	if !matched {
-		return reqerr.NewInvalidArgs("JobexportName", fmt.Sprintf("invalid job export name: %s", e))
+		return reqerr.NewInvalidArgs("JobexportName", fmt.Sprintf("invalid job export name: %s", e)).WithComponent("pipleline")
 	}
 	return nil
 }
@@ -167,10 +165,10 @@ func validateJobexportName(e string) error {
 func validateWorkflowName(r string) error {
 	matched, err := regexp.MatchString(workflowNamePattern, r)
 	if err != nil {
-		return reqerr.NewInvalidArgs("WorkflowName", err.Error())
+		return reqerr.NewInvalidArgs("Workflow", err.Error()).WithComponent("pipleline")
 	}
 	if !matched {
-		return reqerr.NewInvalidArgs("WorkflowName", fmt.Sprintf("invalid workflow name: %s", r))
+		return reqerr.NewInvalidArgs("Workflow", fmt.Sprintf("invalid workflow name: %s", r)).WithComponent("pipleline")
 	}
 	return nil
 }
@@ -178,10 +176,10 @@ func validateWorkflowName(r string) error {
 func validateNodeName(r string) error {
 	matched, err := regexp.MatchString(nodeNamePattern, r)
 	if err != nil {
-		return reqerr.NewInvalidArgs("Workflow NodeName", err.Error())
+		return reqerr.NewInvalidArgs("Workflow NodeName", err.Error()).WithComponent("pipleline")
 	}
 	if !matched {
-		return reqerr.NewInvalidArgs("Workflow NodeName", fmt.Sprintf("invalid workflow node name: %s", r))
+		return reqerr.NewInvalidArgs("Workflow NodeName", fmt.Sprintf("invalid workflow node name: %s", r)).WithComponent("pipleline")
 	}
 	return nil
 }
@@ -189,17 +187,17 @@ func validateNodeName(r string) error {
 func validateVariableName(r string) error {
 	matched, err := regexp.MatchString(variableNameRex, r)
 	if err != nil {
-		return reqerr.NewInvalidArgs("VariableName", err.Error())
+		return reqerr.NewInvalidArgs("VariableName", err.Error()).WithComponent("pipleline")
 	}
 	if !matched {
-		return reqerr.NewInvalidArgs("VariableName", fmt.Sprintf("invalid variable name: %s", r))
+		return reqerr.NewInvalidArgs("VariableName", fmt.Sprintf("invalid variable name: %s", r)).WithComponent("pipleline")
 	}
 	return nil
 }
 
 func validateVariableType(varType string) (err error) {
 	if varType != VariableTimeType && varType != VariableStringType {
-		err = reqerr.NewInvalidArgs("type", "variable type must be `time` or `string`")
+		err = reqerr.NewInvalidArgs("type", "variable type must be `time` or `string`").WithComponent("pipleline")
 		return
 	}
 	return
@@ -213,18 +211,18 @@ type Container struct {
 
 func (c *Container) Validate() (err error) {
 	if c.Type == "" {
-		err = reqerr.NewInvalidArgs("ContainerType", "container type should not be empty")
+		err = reqerr.NewInvalidArgs("ContainerType", "container type should not be empty").WithComponent("pipleline")
 		return
 	}
 	if c.Count < 1 || c.Count > 128 {
-		err = reqerr.NewInvalidArgs("ContainerCount", fmt.Sprintf("invalid container count: %d", c.Count))
+		err = reqerr.NewInvalidArgs("ContainerCount", fmt.Sprintf("invalid container count: %d", c.Count)).WithComponent("pipleline")
 		return
 	}
 	return
 }
 
 type CreateGroupInput struct {
-	PipelineToken
+	PandoraToken
 	GroupName       string     `json:"-"`
 	Region          string     `json:"region"`
 	Container       *Container `json:"container"`
@@ -236,11 +234,11 @@ func (g *CreateGroupInput) Validate() (err error) {
 		return
 	}
 	if g.Region == "" {
-		err = reqerr.NewInvalidArgs("Region", "region should not be empty")
+		err = reqerr.NewInvalidArgs("Region", "region should not be empty").WithComponent("pipleline")
 		return
 	}
 	if g.Container == nil {
-		err = reqerr.NewInvalidArgs("Container", "container should not be empty")
+		err = reqerr.NewInvalidArgs("Container", "container should not be empty").WithComponent("pipleline")
 		return
 	}
 	if err = g.Container.Validate(); err != nil {
@@ -250,7 +248,7 @@ func (g *CreateGroupInput) Validate() (err error) {
 }
 
 type UpdateGroupInput struct {
-	PipelineToken
+	PandoraToken
 	GroupName string     `json:"-"`
 	Container *Container `json:"container"`
 }
@@ -260,7 +258,7 @@ func (g *UpdateGroupInput) Validate() (err error) {
 		return
 	}
 	if g.Container == nil {
-		err = reqerr.NewInvalidArgs("Container", "container should not be empty")
+		err = reqerr.NewInvalidArgs("Container", "container should not be empty").WithComponent("pipleline")
 		return
 	}
 	if err = g.Container.Validate(); err != nil {
@@ -270,17 +268,17 @@ func (g *UpdateGroupInput) Validate() (err error) {
 }
 
 type StartGroupTaskInput struct {
-	PipelineToken
+	PandoraToken
 	GroupName string
 }
 
 type StopGroupTaskInput struct {
-	PipelineToken
+	PandoraToken
 	GroupName string
 }
 
 type GetGroupInput struct {
-	PipelineToken
+	PandoraToken
 	GroupName string
 }
 
@@ -292,7 +290,7 @@ type GetGroupOutput struct {
 }
 
 type DeleteGroupInput struct {
-	PipelineToken
+	PandoraToken
 	GroupName string
 }
 
@@ -303,7 +301,7 @@ type GroupDesc struct {
 }
 
 type ListGroupsInput struct {
-	PipelineToken
+	PandoraToken
 }
 
 type ListGroupsOutput struct {
@@ -326,21 +324,21 @@ func (e RepoSchemaEntry) String() string {
 func (e *RepoSchemaEntry) Validate() (err error) {
 	matched, err := regexp.MatchString(schemaKeyPattern, e.Key)
 	if err != nil {
-		err = reqerr.NewInvalidArgs("Schema", err.Error())
+		err = reqerr.NewInvalidArgs("Schema", err.Error()).WithComponent("pipleline")
 		return
 	}
 	if !matched {
-		err = reqerr.NewInvalidArgs("Schema", fmt.Sprintf("invalid field key: %s", e.Key))
+		err = reqerr.NewInvalidArgs("Schema", fmt.Sprintf("invalid field key: %s", e.Key)).WithComponent("pipleline")
 		return
 
 	}
 	if !schemaTypes[e.ValueType] {
-		err = reqerr.NewInvalidArgs("Schema", fmt.Sprintf("invalid field type: %s, field type should be one of \"float\", \"string\", \"date\", \"long\", \"boolean\", \"array\", \"map\" and \"jsonstring\"", e.ValueType))
+		err = reqerr.NewInvalidArgs("Schema", fmt.Sprintf("invalid field type: %s, field type should be one of \"float\", \"string\", \"date\", \"long\", \"boolean\", \"array\", \"map\" and \"jsonstring\"", e.ValueType)).WithComponent("pipleline")
 		return
 	}
 	if e.ValueType == "array" {
 		if e.ElemType != PandoraTypeFloat && e.ElemType != PandoraTypeLong && e.ElemType != PandoraTypeString {
-			err = reqerr.NewInvalidArgs("Schema", fmt.Sprintf("invalid field type in array: %s, field type should be one of \"float\", \"string\", and \"long\"", e.ValueType))
+			err = reqerr.NewInvalidArgs("Schema", fmt.Sprintf("invalid field type in array: %s, field type should be one of \"float\", \"string\", and \"long\"", e.ValueType)).WithComponent("pipleline")
 			return
 		}
 	}
@@ -356,7 +354,7 @@ func (e *RepoSchemaEntry) Validate() (err error) {
 }
 
 type CreateRepoDSLInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName  string
 	Region    string       `json:"region"`
 	DSL       string       `json:"dsl"`
@@ -461,7 +459,7 @@ func SchemaToDSL(schemas []RepoSchemaEntry, indent string) (dsl string) {
 
 func toSchema(dsl string, depth int) (schemas []RepoSchemaEntry, err error) {
 	if depth > base.NestLimit {
-		err = reqerr.NewInvalidArgs("Schema", fmt.Sprintf("RepoSchemaEntry are nested out of limit %v", base.NestLimit))
+		err = reqerr.NewInvalidArgs("Schema", fmt.Sprintf("RepoSchemaEntry are nested out of limit %v", base.NestLimit)).WithComponent("pipleline")
 		return
 	}
 	schemas = make([]RepoSchemaEntry, 0)
@@ -581,21 +579,32 @@ func getFormatDSL(schemas []RepoSchemaEntry, depth int, indent string) (dsl stri
 	return
 }
 
-type AutoExportToKODOInput struct {
-	RepoName   string
-	BucketName string
-	Prefix     string
-	Format     string
-	Email      string
-	Retention  int //数字，单位为天
+type AnalyzerInfo struct {
+	FullText bool //fulltext为true的话使用标准分词的全文索引。
+	Default  string
+	Analyzer map[string]string
 }
 
 type AutoExportToLogDBInput struct {
 	RepoName    string
 	LogRepoName string
 	Retention   string
+	Region      string
 	OmitInvalid bool
 	OmitEmpty   bool
+	AnalyzerInfo
+	AutoExportLogDBTokens
+}
+type AutoExportLogDBTokens struct {
+	PipelineCreateRepoToken PandoraToken
+	PipelineGetRepoToken    PandoraToken
+	CreateLogDBRepoToken    PandoraToken
+	UpdateLogDBRepoToken    PandoraToken
+	GetLogDBRepoToken       PandoraToken
+	CreateExportToken       PandoraToken
+	UpdateExportToken       PandoraToken
+	GetExportToken          PandoraToken
+	ListExportToken         PandoraToken
 }
 
 type CreateRepoForLogDBInput struct {
@@ -606,6 +615,8 @@ type CreateRepoForLogDBInput struct {
 	Retention   string
 	OmitInvalid bool
 	OmitEmpty   bool
+	AnalyzerInfo
+	AutoExportLogDBTokens
 }
 
 type CreateRepoForLogDBDSLInput struct {
@@ -614,6 +625,7 @@ type CreateRepoForLogDBDSLInput struct {
 	Region      string
 	Schema      string
 	Retention   string
+	AutoExportLogDBTokens
 }
 
 type AutoExportToTSDBInput struct {
@@ -627,6 +639,17 @@ type AutoExportToTSDBInput struct {
 	IsMetric     bool
 	ExpandAttr   []string
 	SeriesTags   map[string][]string
+	AutoExportTSDBTokens
+}
+
+type AutoExportTSDBTokens struct {
+	PipelineGetRepoToken   PandoraToken
+	CreateTSDBRepoToken    PandoraToken
+	CreateTSDBSeriesTokens map[string]PandoraToken
+	CreateExportToken      map[string]PandoraToken
+	UpdateExportToken      map[string]PandoraToken
+	GetExportToken         map[string]PandoraToken
+	ListExportToken        PandoraToken
 }
 
 type CreateRepoForTSDBInput struct {
@@ -640,6 +663,7 @@ type CreateRepoForTSDBInput struct {
 	OmitInvalid  bool
 	OmitEmpty    bool
 	Timestamp    string
+	AutoExportTSDBTokens
 }
 
 type CreateRepoForKodoInput struct {
@@ -650,8 +674,29 @@ type CreateRepoForKodoInput struct {
 	Bucket    string
 	RepoName  string
 	Prefix    string
+	Compress  bool
 	Format    string
 	Schema    []RepoSchemaEntry
+	AutoExportKodoTokens
+}
+
+type AutoExportKodoTokens struct {
+	PipelineGetRepoToken PandoraToken
+	CreateExportToken    PandoraToken
+	UpdateExportToken    PandoraToken
+	GetExportToken       PandoraToken
+	ListExportToken      PandoraToken
+}
+
+type AutoExportToKODOInput struct {
+	RepoName   string
+	BucketName string
+	Prefix     string
+	Compress   bool
+	Format     string
+	Email      string
+	Retention  int //数字，单位为天
+	AutoExportKodoTokens
 }
 
 type SeriesInfo struct {
@@ -669,6 +714,7 @@ type CreateRepoForMutiExportTSDBInput struct {
 	OmitInvalid  bool
 	OmitEmpty    bool
 	SeriesMap    map[string]SeriesInfo
+	AutoExportTSDBTokens
 }
 
 func IsTag(key string, tags []string) bool {
@@ -684,17 +730,20 @@ func IsTag(key string, tags []string) bool {
 }
 
 type RepoOptions struct {
-	WithIP string `json:"withIP"`
+	WithIP        string `json:"withIP"`
+	WithTimestamp string `json:"withTimestamp"`
+	UnescapeLine  bool   `json:"unescapeLine"`
 }
 
 type CreateRepoInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName  string
 	Region    string            `json:"region"`
 	Schema    []RepoSchemaEntry `json:"schema"`
 	Options   *RepoOptions      `json:"options"`
 	GroupName string            `json:"group"`
 	Workflow  string            `json:"workflow"`
+	RuleNames *[]string         `json:"ruleNames"`
 }
 
 func (r *CreateRepoInput) Validate() (err error) {
@@ -708,7 +757,7 @@ func (r *CreateRepoInput) Validate() (err error) {
 	}
 
 	if r.Schema == nil || len(r.Schema) == 0 {
-		err = reqerr.NewInvalidArgs("Schema", "schema should not be empty")
+		err = reqerr.NewInvalidArgs("Schema", "schema should not be empty").WithComponent("pipleline")
 		return
 	}
 	for _, schema := range r.Schema {
@@ -724,7 +773,7 @@ func (r *CreateRepoInput) Validate() (err error) {
 	}
 
 	if r.Region == "" {
-		err = reqerr.NewInvalidArgs("Region", "region should not be empty")
+		err = reqerr.NewInvalidArgs("Region", "region should not be empty").WithComponent("pipleline")
 		return
 	}
 	return
@@ -733,11 +782,14 @@ func (r *CreateRepoInput) Validate() (err error) {
 // ExportType选项表示同时更新的下游export和repo
 // 目前支持 tsdb、logdb、kodo、all
 type UpdateRepoInput struct {
-	PipelineToken
-	RepoName    string
-	Schema      []RepoSchemaEntry `json:"schema"`
-	Option      *SchemaFreeOption
-	RepoOptions *RepoOptions `json:"options"`
+	PandoraToken
+	PipelineGetRepoToken PandoraToken
+	RepoName             string
+	workflow             string
+	Schema               []RepoSchemaEntry `json:"schema"`
+	Option               *SchemaFreeOption
+	RepoOptions          *RepoOptions `json:"options"`
+	RuleNames            *[]string    `json:"ruleNames"`
 }
 
 func (r *UpdateRepoInput) IsTag(key string) bool {
@@ -759,7 +811,7 @@ func (r *UpdateRepoInput) Validate() (err error) {
 	}
 
 	if r.Schema == nil || len(r.Schema) == 0 {
-		err = reqerr.NewInvalidArgs("Schema", "schema should not be empty")
+		err = reqerr.NewInvalidArgs("Schema", "schema should not be empty").WithComponent("pipleline")
 		return
 	}
 	for _, schema := range r.Schema {
@@ -771,7 +823,7 @@ func (r *UpdateRepoInput) Validate() (err error) {
 }
 
 type GetRepoInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName string
 }
 
@@ -789,7 +841,7 @@ type RepoExistOutput struct {
 }
 
 type GetSampleDataInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName string
 	Count    int //最多10条
 }
@@ -802,6 +854,7 @@ type GetRepoOutput struct {
 	DerivedFrom string            `json:"derivedFrom"`
 	FromDag     bool              `json:"fromDag"`
 	Workflow    string            `json:"workflow"`
+	RuleNames   *[]string         `json:"ruleNames"`
 }
 
 type SampleDataOutput struct {
@@ -809,16 +862,17 @@ type SampleDataOutput struct {
 }
 
 type RepoDesc struct {
-	RepoName    string `json:"name"`
-	Region      string `json:"region"`
-	GroupName   string `json:"group"`
-	DerivedFrom string `json:"derivedFrom"`
-	FromDag     bool   `json:"fromDag"`
-	Workflow    string `json:"workflow"`
+	RepoName    string    `json:"name"`
+	Region      string    `json:"region"`
+	GroupName   string    `json:"group"`
+	DerivedFrom string    `json:"derivedFrom"`
+	FromDag     bool      `json:"fromDag"`
+	Workflow    string    `json:"workflow"`
+	RuleNames   *[]string `json:"ruleNames"`
 }
 
 type ListReposInput struct {
-	PipelineToken
+	PandoraToken
 	WithDag bool `json:"-"`
 }
 
@@ -827,7 +881,7 @@ type ListReposOutput struct {
 }
 
 type DeleteRepoInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName string
 }
 
@@ -906,19 +960,45 @@ func escapeStringField(in string) string {
 }
 
 type PostDataInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string
 	RepoName      string
 	Points        Points
 }
 
 type SchemaFreeInput struct {
-	PipelineToken
-	RepoName    string
-	Datas       Datas
-	NoUpdate    bool
-	Option      *SchemaFreeOption
-	RepoOptions *RepoOptions
+	SchemaFreeToken
+	Datas        Datas
+	NoUpdate     bool
+	Region       string
+	RepoName     string
+	WorkflowName string
+	Option       *SchemaFreeOption
+	RepoOptions  *RepoOptions
+}
+
+type SchemaFreeToken struct {
+	PipelineCreateRepoToken        PandoraToken
+	PipelinePostDataToken          PandoraToken
+	PipelineGetRepoToken           PandoraToken
+	PipelineUpdateRepoToken        PandoraToken
+	PipelineGetWorkflowToken       PandoraToken
+	PipelineCreateWorkflowToken    PandoraToken
+	PipelineStartWorkflowToken     PandoraToken
+	PipelineStopWorkflowToken      PandoraToken
+	PipelineGetWorkflowStatusToken PandoraToken
+}
+
+type InitOrUpdateWorkflowInput struct {
+	SchemaFreeToken
+	InitOptionChange bool
+	SchemaFree       bool
+	Region           string
+	RepoName         string
+	WorkflowName     string
+	RepoOptions      *RepoOptions
+	Schema           []RepoSchemaEntry
+	Option           *SchemaFreeOption
 }
 
 type SchemaFreeOption struct {
@@ -926,46 +1006,47 @@ type SchemaFreeOption struct {
 	ToTSDB           bool
 	ToKODO           bool
 	ForceDataConvert bool
+	NumberUseFloat   bool
 	AutoExportToLogDBInput
 	AutoExportToKODOInput
 	AutoExportToTSDBInput
 }
 
 type PostDataFromFileInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName string
 	FilePath string
 }
 
 type PostDataFromReaderInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName   string
 	Reader     io.ReadSeeker
 	BodyLength int64
 }
 
 type PostDataFromBytesInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName string
 	Buffer   []byte
 }
 
 type UploadPluginInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string
 	PluginName    string
 	Buffer        *bytes.Buffer
 }
 
 type UploadPluginFromFileInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string
 	PluginName    string
 	FilePath      string
 }
 
 type GetPluginInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string
 	PluginName    string
 }
@@ -980,7 +1061,7 @@ type GetPluginOutput struct {
 }
 
 type VerifyPluginInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string
 	PluginName    string
 }
@@ -995,7 +1076,7 @@ type VerifyPluginOutput struct {
 }
 
 type ListPluginsInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string
 }
 
@@ -1004,7 +1085,7 @@ type ListPluginsOutput struct {
 }
 
 type DeletePluginInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string
 	PluginName    string
 }
@@ -1031,7 +1112,7 @@ type TransformSpec struct {
 
 func (t *TransformSpec) Validate() (err error) {
 	if t.Mode == "" && t.Code == "" && t.Plugin == nil {
-		err = reqerr.NewInvalidArgs("TransformSpec", "all mode, code and plugin can not be empty")
+		err = reqerr.NewInvalidArgs("TransformSpec", "all mode, code and plugin can not be empty").WithComponent("pipleline")
 		return
 	}
 	if t.Container != nil {
@@ -1043,7 +1124,7 @@ func (t *TransformSpec) Validate() (err error) {
 }
 
 type CreateTransformInput struct {
-	PipelineToken
+	PandoraToken
 	SrcRepoName   string
 	TransformName string
 	DestRepoName  string
@@ -1061,14 +1142,14 @@ func (t *CreateTransformInput) Validate() (err error) {
 		return
 	}
 	if t.SrcRepoName == t.DestRepoName {
-		err = reqerr.NewInvalidArgs("DestRepoName", "dest repo name should be different to src repo name")
+		err = reqerr.NewInvalidArgs("DestRepoName", "dest repo name should be different to src repo name").WithComponent("pipleline")
 		return
 	}
 	return t.Spec.Validate()
 }
 
 type UpdateTransformInput struct {
-	PipelineToken
+	PandoraToken
 	SrcRepoName   string
 	TransformName string
 	Spec          *TransformSpec
@@ -1092,7 +1173,7 @@ type TransformDesc struct {
 }
 
 type GetTransformInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName      string
 	TransformName string
 }
@@ -1118,13 +1199,13 @@ type GetTransformOutput struct {
 }
 
 type DeleteTransformInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName      string
 	TransformName string
 }
 
 type ListTransformsInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName string
 }
 
@@ -1144,11 +1225,11 @@ type ExportTsdbSpec struct {
 
 func (s *ExportTsdbSpec) Validate() (err error) {
 	if s.DestRepoName == "" {
-		err = reqerr.NewInvalidArgs("ExportSpec", "dest repo name should not be empty")
+		err = reqerr.NewInvalidArgs("ExportSpec", "dest repo name should not be empty").WithComponent("pipleline")
 		return
 	}
 	if s.SeriesName == "" {
-		err = reqerr.NewInvalidArgs("ExportSpec", "series name should not be empty")
+		err = reqerr.NewInvalidArgs("ExportSpec", "series name should not be empty").WithComponent("pipleline")
 		return
 	}
 	return
@@ -1166,19 +1247,19 @@ type ExportMongoSpec struct {
 
 func (s *ExportMongoSpec) Validate() (err error) {
 	if s.Host == "" {
-		err = reqerr.NewInvalidArgs("ExportSpec", "host should not be empty")
+		err = reqerr.NewInvalidArgs("ExportSpec", "host should not be empty").WithComponent("pipleline")
 		return
 	}
 	if s.DbName == "" {
-		err = reqerr.NewInvalidArgs("ExportSpec", "dbname should not be empty")
+		err = reqerr.NewInvalidArgs("ExportSpec", "dbname should not be empty").WithComponent("pipleline")
 		return
 	}
 	if s.CollName == "" {
-		err = reqerr.NewInvalidArgs("ExportSpec", "collection name should not be empty")
+		err = reqerr.NewInvalidArgs("ExportSpec", "collection name should not be empty").WithComponent("pipleline")
 		return
 	}
 	if s.Mode != "UPSERT" && s.Mode != "INSERT" && s.Mode != "UPDATE" {
-		err = reqerr.NewInvalidArgs("ExportSpec", fmt.Sprintf("invalid mode: %s, mode should be one of \"UPSERT\", \"INSERT\" and \"UPDATE\"", s.Mode))
+		err = reqerr.NewInvalidArgs("ExportSpec", fmt.Sprintf("invalid mode: %s, mode should be one of \"UPSERT\", \"INSERT\" and \"UPDATE\"", s.Mode)).WithComponent("pipleline")
 		return
 	}
 	return
@@ -1193,7 +1274,7 @@ type ExportLogDBSpec struct {
 
 func (s *ExportLogDBSpec) Validate() (err error) {
 	if s.DestRepoName == "" {
-		err = reqerr.NewInvalidArgs("ExportSpec", "dest repo name should not be empty")
+		err = reqerr.NewInvalidArgs("ExportSpec", "dest repo name should not be empty").WithComponent("pipleline")
 		return
 	}
 	return
@@ -1216,7 +1297,7 @@ type ExportKodoSpec struct {
 
 func (s *ExportKodoSpec) Validate() (err error) {
 	if s.Bucket == "" {
-		err = reqerr.NewInvalidArgs("ExportSpec", "bucket should not be empty")
+		err = reqerr.NewInvalidArgs("ExportSpec", "bucket should not be empty").WithComponent("pipleline")
 		return
 	}
 	return
@@ -1230,18 +1311,46 @@ type ExportHttpSpec struct {
 
 func (s *ExportHttpSpec) Validate() (err error) {
 	if s.Host == "" {
-		err = reqerr.NewInvalidArgs("ExportSpec", "host should not be empty")
+		err = reqerr.NewInvalidArgs("ExportSpec", "host should not be empty").WithComponent("pipleline")
 		return
 	}
 	if s.Uri == "" {
-		err = reqerr.NewInvalidArgs("ExportSpec", "uri should not be empty")
+		err = reqerr.NewInvalidArgs("ExportSpec", "uri should not be empty").WithComponent("pipleline")
+		return
+	}
+	return
+}
+
+type ExportHDFSSpec struct {
+	Path           string            `json:"path"`
+	User           string            `json:"user"`
+	Fields         map[string]string `json:"fields"`
+	RotateStrategy string            `json:"rotateStrategy"`
+	RotateSize     int               `json:"rotateSize"`
+	RotateInterval int               `json:"rotateInterval"`
+	Format         string            `json:"format"`
+	Delimiter      string            `json:"delimiter"`
+	Compress       bool              `json:"compress"`
+}
+
+func (s *ExportHDFSSpec) Validate() (err error) {
+	if s.Path == "" {
+		err = reqerr.NewInvalidArgs("ExportSpec", "path should not be empty").WithComponent("pipleline")
+		return
+	}
+	if s.User == "" {
+		err = reqerr.NewInvalidArgs("ExportSpec", "user should not be empty").WithComponent("pipleline")
+		return
+	}
+	if len(s.Fields) == 0 {
+		err = reqerr.NewInvalidArgs("ExportSpec", "fields should not be empty").WithComponent("pipleline")
 		return
 	}
 	return
 }
 
 type CreateExportInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName   string      `json:"-"`
 	ExportName string      `json:"-"`
 	Type       string      `json:"type"`
@@ -1257,11 +1366,11 @@ func (e *CreateExportInput) Validate() (err error) {
 		return
 	}
 	if e.Spec == nil {
-		err = reqerr.NewInvalidArgs("ExportSpec", "spec should not be nil")
+		err = reqerr.NewInvalidArgs("ExportSpec", "spec should not be nil").WithComponent("pipleline")
 		return
 	}
 	if e.Whence != "" && e.Whence != "oldest" && e.Whence != "newest" {
-		err = reqerr.NewInvalidArgs("ExportSpec", "whence must be empty, \"oldest\" or \"newest\"")
+		err = reqerr.NewInvalidArgs("ExportSpec", "whence must be empty, \"oldest\" or \"newest\"").WithComponent("pipleline")
 		return
 	}
 
@@ -1276,20 +1385,22 @@ func (e *CreateExportInput) Validate() (err error) {
 		e.Type = ExportTypeKODO
 	case *ExportHttpSpec, ExportHttpSpec:
 		e.Type = ExportTypeHTTP
+	case *ExportHDFSSpec, ExportHDFSSpec:
+		e.Type = ExportTypeHDFS
 	default:
 		return
 	}
 
 	vv, ok := e.Spec.(base.Validator)
 	if !ok {
-		err = reqerr.NewInvalidArgs("ExportSpec", "export spec cannot cast to validator")
+		err = reqerr.NewInvalidArgs("ExportSpec", "export spec cannot cast to validator").WithComponent("pipleline")
 		return
 	}
 	return vv.Validate()
 }
 
 type UpdateExportInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName   string      `json:"-"`
 	ExportName string      `json:"-"`
 	Spec       interface{} `json:"spec"`
@@ -1303,19 +1414,19 @@ func (e *UpdateExportInput) Validate() (err error) {
 		return
 	}
 	if e.Spec == nil {
-		err = reqerr.NewInvalidArgs("ExportSpec", "spec should not be nil")
+		err = reqerr.NewInvalidArgs("ExportSpec", "spec should not be nil").WithComponent("pipleline")
 		return
 	}
 	switch e.Spec.(type) {
 	case *ExportTsdbSpec, ExportTsdbSpec, *ExportMongoSpec, ExportMongoSpec,
 		*ExportLogDBSpec, ExportLogDBSpec, *ExportKodoSpec, ExportKodoSpec,
-		*ExportHttpSpec, ExportHttpSpec:
+		*ExportHttpSpec, ExportHttpSpec, *ExportHDFSSpec, ExportHDFSSpec:
 	default:
 		return
 	}
 	vv, ok := e.Spec.(base.Validator)
 	if !ok {
-		err = reqerr.NewInvalidArgs("ExportSpec", "export spec cannot cast to validator")
+		err = reqerr.NewInvalidArgs("ExportSpec", "export spec cannot cast to validator").WithComponent("pipleline")
 		return
 	}
 	return vv.Validate()
@@ -1330,7 +1441,7 @@ type ExportDesc struct {
 }
 
 type GetExportInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName   string
 	ExportName string
 }
@@ -1356,7 +1467,7 @@ type ExportExistOutput struct {
 }
 
 type ListExportsInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName string
 }
 
@@ -1365,20 +1476,20 @@ type ListExportsOutput struct {
 }
 
 type DeleteExportInput struct {
-	PipelineToken
+	PandoraToken
 	RepoName   string
 	ExportName string
 }
 
 type VerifyTransformInput struct {
-	PipelineToken
+	PandoraToken
 	Schema []RepoSchemaEntry `json:"schema"`
 	Spec   *TransformSpec    `json:"spec"`
 }
 
 func (v *VerifyTransformInput) Validate() (err error) {
 	if v.Schema == nil || len(v.Schema) == 0 {
-		err = reqerr.NewInvalidArgs("Schema", "schema should not be empty")
+		err = reqerr.NewInvalidArgs("Schema", "schema should not be empty").WithComponent("pipleline")
 		return
 	}
 	for _, item := range v.Schema {
@@ -1395,7 +1506,7 @@ type VerifyTransformOutput struct {
 }
 
 type VerifyExportInput struct {
-	PipelineToken
+	PandoraToken
 	Schema []RepoSchemaEntry `json:"schema"`
 	Type   string            `json:"type"`
 	Spec   interface{}       `json:"spec"`
@@ -1404,7 +1515,7 @@ type VerifyExportInput struct {
 
 func (v *VerifyExportInput) Validate() (err error) {
 	if v.Schema == nil || len(v.Schema) == 0 {
-		err = reqerr.NewInvalidArgs("VerifyExportSpec", "schema should not be empty")
+		err = reqerr.NewInvalidArgs("VerifyExportSpec", "schema should not be empty").WithComponent("pipleline")
 		return
 	}
 	for _, item := range v.Schema {
@@ -1414,12 +1525,12 @@ func (v *VerifyExportInput) Validate() (err error) {
 	}
 
 	if v.Spec == nil {
-		err = reqerr.NewInvalidArgs("ExportSpec", "spec should not be nil")
+		err = reqerr.NewInvalidArgs("ExportSpec", "spec should not be nil").WithComponent("pipleline")
 		return
 	}
 
 	if v.Whence != "" && v.Whence != "oldest" && v.Whence != "newest" {
-		err = reqerr.NewInvalidArgs("ExportSpec", "whence must be empty, \"oldest\" or \"newest\"")
+		err = reqerr.NewInvalidArgs("ExportSpec", "whence must be empty, \"oldest\" or \"newest\"").WithComponent("pipleline")
 		return
 	}
 
@@ -1434,13 +1545,15 @@ func (v *VerifyExportInput) Validate() (err error) {
 		v.Type = "kodo"
 	case *ExportHttpSpec, ExportHttpSpec:
 		v.Type = "http"
+	case *ExportHDFSSpec, ExportHDFSSpec:
+		v.Type = "hdfs"
 	default:
 		return
 	}
 
 	vv, ok := v.Spec.(base.Validator)
 	if !ok {
-		err = reqerr.NewInvalidArgs("ExportSpec", "export spec cannot cast to validator")
+		err = reqerr.NewInvalidArgs("ExportSpec", "export spec cannot cast to validator").WithComponent("pipleline")
 		return
 	}
 	return vv.Validate()
@@ -1454,10 +1567,10 @@ type KodoSourceSpec struct {
 
 func (k *KodoSourceSpec) Validate() (err error) {
 	if k.Bucket == "" {
-		return reqerr.NewInvalidArgs("Bucket", fmt.Sprintf("bucket name should not be empty"))
+		return reqerr.NewInvalidArgs("Bucket", fmt.Sprintf("bucket name should not be empty")).WithComponent("pipleline")
 	}
 	if k.FileType == "" {
-		return reqerr.NewInvalidArgs("FileType", fmt.Sprintf("fileType should not be empty"))
+		return reqerr.NewInvalidArgs("FileType", fmt.Sprintf("fileType should not be empty")).WithComponent("pipleline")
 	}
 
 	return
@@ -1470,22 +1583,22 @@ type HdfsSourceSpec struct {
 
 func (h *HdfsSourceSpec) Validate() (err error) {
 	if len(h.Paths) == 0 {
-		return reqerr.NewInvalidArgs("Paths", fmt.Sprintf("paths should not be empty"))
+		return reqerr.NewInvalidArgs("Paths", fmt.Sprintf("paths should not be empty")).WithComponent("pipleline")
 	}
 	for _, path := range h.Paths {
 		if path == "" {
-			return reqerr.NewInvalidArgs("Path", fmt.Sprintf("path in paths should not be empty"))
+			return reqerr.NewInvalidArgs("Path", fmt.Sprintf("path in paths should not be empty")).WithComponent("pipleline")
 		}
 	}
 	if h.FileType == "" {
-		return reqerr.NewInvalidArgs("FileType", fmt.Sprintf("fileType should not be empty"))
+		return reqerr.NewInvalidArgs("FileType", fmt.Sprintf("fileType should not be empty")).WithComponent("pipleline")
 	}
 
 	return
 }
 
 type RetrieveSchemaInput struct {
-	PipelineToken
+	PandoraToken
 	Type string      `json:"type"`
 	Spec interface{} `json:"spec"`
 }
@@ -1502,7 +1615,7 @@ func (r *RetrieveSchemaInput) Validate() (err error) {
 
 	vv, ok := r.Spec.(base.Validator)
 	if !ok {
-		err = reqerr.NewInvalidArgs("Spec", "data source spec cannot cast to validator")
+		err = reqerr.NewInvalidArgs("Spec", "data source spec cannot cast to validator").WithComponent("pipleline")
 		return
 	}
 	return vv.Validate()
@@ -1513,7 +1626,7 @@ type RetrieveSchemaOutput struct {
 }
 
 type CreateDatasourceInput struct {
-	PipelineToken
+	PandoraToken
 	DatasourceName string            `json:"-"`
 	Region         string            `json:"region"`
 	Type           string            `json:"type"`
@@ -1525,10 +1638,10 @@ type CreateDatasourceInput struct {
 
 func (c *CreateDatasourceInput) Validate() (err error) {
 	if c.DatasourceName == "" {
-		return reqerr.NewInvalidArgs("DatasourceName", fmt.Sprintf("datasource name should not be empty"))
+		return reqerr.NewInvalidArgs("DatasourceName", fmt.Sprintf("datasource name should not be empty")).WithComponent("pipleline")
 	}
 	if c.Type == "" {
-		return reqerr.NewInvalidArgs("Type", fmt.Sprintf("type of datasource should not be empty"))
+		return reqerr.NewInvalidArgs("Type", fmt.Sprintf("type of datasource should not be empty")).WithComponent("pipleline")
 	}
 	if c.Workflow != "" {
 		if err = validateWorkflowName(c.Workflow); err != nil {
@@ -1536,7 +1649,7 @@ func (c *CreateDatasourceInput) Validate() (err error) {
 		}
 	}
 	if len(c.Schema) == 0 {
-		return reqerr.NewInvalidArgs("Schema", fmt.Sprintf("schema of datasource should not be empty"))
+		return reqerr.NewInvalidArgs("Schema", fmt.Sprintf("schema of datasource should not be empty")).WithComponent("pipleline")
 	}
 	for _, schema := range c.Schema {
 		if err = schema.Validate(); err != nil {
@@ -1555,14 +1668,14 @@ func (c *CreateDatasourceInput) Validate() (err error) {
 
 	vv, ok := c.Spec.(base.Validator)
 	if !ok {
-		err = reqerr.NewInvalidArgs("Spec", "data source spec cannot cast to validator")
+		err = reqerr.NewInvalidArgs("Spec", "data source spec cannot cast to validator").WithComponent("pipleline")
 		return
 	}
 	return vv.Validate()
 }
 
 type GetDatasourceInput struct {
-	PipelineToken
+	PandoraToken
 	DatasourceName string
 }
 
@@ -1602,7 +1715,7 @@ type ListDatasourcesOutput struct {
 }
 
 type DeleteDatasourceInput struct {
-	PipelineToken
+	PandoraToken
 	DatasourceName string
 }
 
@@ -1615,13 +1728,13 @@ type JobSrc struct {
 
 func (s *JobSrc) Validate() (err error) {
 	if s.SrcName == "" {
-		return reqerr.NewInvalidArgs("SrcName", fmt.Sprintf("source name should not be empty"))
+		return reqerr.NewInvalidArgs("SrcName", fmt.Sprintf("source name should not be empty")).WithComponent("pipleline")
 	}
 	if s.Type == "" {
-		return reqerr.NewInvalidArgs("Type", fmt.Sprintf("source type should not be empty"))
+		return reqerr.NewInvalidArgs("Type", fmt.Sprintf("source type should not be empty")).WithComponent("pipleline")
 	}
 	if s.TableName == "" {
-		return reqerr.NewInvalidArgs("TableName", fmt.Sprintf("table name should not be empty"))
+		return reqerr.NewInvalidArgs("TableName", fmt.Sprintf("table name should not be empty")).WithComponent("pipleline")
 	}
 
 	return
@@ -1634,10 +1747,10 @@ type Computation struct {
 
 func (c *Computation) Validate() (err error) {
 	if c.Code == "" {
-		return reqerr.NewInvalidArgs("Code", fmt.Sprintf("code in computation should not be empty"))
+		return reqerr.NewInvalidArgs("Code", fmt.Sprintf("code in computation should not be empty")).WithComponent("pipleline")
 	}
 	if c.Type == "" {
-		return reqerr.NewInvalidArgs("Type", fmt.Sprintf("type in computation should not be empty"))
+		return reqerr.NewInvalidArgs("Type", fmt.Sprintf("type in computation should not be empty")).WithComponent("pipleline")
 	}
 
 	return
@@ -1660,7 +1773,7 @@ type Param struct {
 }
 
 type CreateJobInput struct {
-	PipelineToken
+	PandoraToken
 	JobName     string        `json:"-"`
 	Srcs        []JobSrc      `json:"srcs"`
 	Computation Computation   `json:"computation"`
@@ -1671,10 +1784,10 @@ type CreateJobInput struct {
 
 func (c *CreateJobInput) Validate() (err error) {
 	if c.JobName == "" {
-		return reqerr.NewInvalidArgs("JobName", fmt.Sprintf("job name should not be empty"))
+		return reqerr.NewInvalidArgs("JobName", fmt.Sprintf("job name should not be empty")).WithComponent("pipleline")
 	}
 	if len(c.Srcs) == 0 {
-		return reqerr.NewInvalidArgs("Srcs", fmt.Sprintf("must have at least one src inside the job srcs"))
+		return reqerr.NewInvalidArgs("Srcs", fmt.Sprintf("must have at least one src inside the job srcs")).WithComponent("pipleline")
 	}
 	for _, src := range c.Srcs {
 		if err = src.Validate(); err != nil {
@@ -1689,7 +1802,7 @@ func (c *CreateJobInput) Validate() (err error) {
 }
 
 type GetJobInput struct {
-	PipelineToken
+	PandoraToken
 	JobName string
 }
 
@@ -1725,7 +1838,7 @@ type JobDesc struct {
 }
 
 type ListJobsInput struct {
-	PipelineToken
+	PandoraToken
 	SrcJobName        string
 	SrcDatasourceName string
 }
@@ -1735,31 +1848,31 @@ type ListJobsOutput struct {
 }
 
 type DeleteJobInput struct {
-	PipelineToken
+	PandoraToken
 	JobName string
 }
 
 type StartJobInput struct {
-	PipelineToken
+	PandoraToken
 	JobName string  `json:"-"`
 	Params  []Param `json:"params,omitempty"`
 }
 
 func (s *StartJobInput) Validate() (err error) {
 	if s.JobName == "" {
-		return reqerr.NewInvalidArgs("JobName", fmt.Sprintf("job name should not be empty"))
+		return reqerr.NewInvalidArgs("JobName", fmt.Sprintf("job name should not be empty")).WithComponent("pipleline")
 	}
 
 	return
 }
 
 type StopJobInput struct {
-	PipelineToken
+	PandoraToken
 	JobName string
 }
 
 type GetJobHistoryInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string
 	JobName       string
 }
@@ -1780,7 +1893,7 @@ type GetJobHistoryOutput struct {
 }
 
 type StopJobBatchInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string `json:"-"`
 	JobName       string `json:"jobName"`
 	RunId         int    `json:"runId"`
@@ -1788,7 +1901,7 @@ type StopJobBatchInput struct {
 
 func (s *StopJobBatchInput) Validate() (err error) {
 	if s.JobName == "" {
-		return reqerr.NewInvalidArgs("JobName", fmt.Sprintf("job name should not be empty"))
+		return reqerr.NewInvalidArgs("JobName", fmt.Sprintf("job name should not be empty")).WithComponent("pipleline")
 	}
 	return
 }
@@ -1799,7 +1912,7 @@ type StopJobBatchOutput struct {
 }
 
 type RerunJobBatchInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string `json:"-"`
 	JobName       string `json:"jobName"`
 	RunId         int    `json:"runId"`
@@ -1807,7 +1920,7 @@ type RerunJobBatchInput struct {
 
 func (s *RerunJobBatchInput) Validate() (err error) {
 	if s.JobName == "" {
-		return reqerr.NewInvalidArgs("JobName", fmt.Sprintf("job name should not be empty"))
+		return reqerr.NewInvalidArgs("JobName", fmt.Sprintf("job name should not be empty")).WithComponent("pipleline")
 	}
 	return
 }
@@ -1833,18 +1946,18 @@ type JobExportKodoSpec struct {
 
 func (e *JobExportKodoSpec) Validate() (err error) {
 	if e.Bucket == "" {
-		return reqerr.NewInvalidArgs("Bucket", fmt.Sprintf("bucket name should not be empty"))
+		return reqerr.NewInvalidArgs("Bucket", fmt.Sprintf("bucket name should not be empty")).WithComponent("pipleline")
 	}
 	if e.Format == "" {
-		return reqerr.NewInvalidArgs("Format", fmt.Sprintf("format should not be empty"))
+		return reqerr.NewInvalidArgs("Format", fmt.Sprintf("format should not be empty")).WithComponent("pipleline")
 	}
 	if strings.ToLower(e.Format) == "csv" {
 		if e.Delimiter == "" {
-			return reqerr.NewInvalidArgs("Delimiter", fmt.Sprintf("csv's delimiter should not be empty"))
+			return reqerr.NewInvalidArgs("Delimiter", fmt.Sprintf("csv's delimiter should not be empty")).WithComponent("pipleline")
 		}
 	}
 	if e.FileCount <= 0 {
-		return reqerr.NewInvalidArgs("FileCount", fmt.Sprintf("fileCount should be larger than 0"))
+		return reqerr.NewInvalidArgs("FileCount", fmt.Sprintf("fileCount should be larger than 0")).WithComponent("pipleline")
 	}
 	return
 }
@@ -1886,7 +1999,7 @@ func (e *JobExportTsdbSpec) Validate() (err error) {
 }
 
 type CreateJobExportInput struct {
-	PipelineToken
+	PandoraToken
 	JobName    string      `json:"-"`
 	ExportName string      `json:"-"`
 	Type       string      `json:"type"`
@@ -1916,14 +2029,14 @@ func (e *CreateJobExportInput) Validate() (err error) {
 
 	vv, ok := e.Spec.(base.Validator)
 	if !ok {
-		err = reqerr.NewInvalidArgs("JobExportSpec", "job export spec cannot cast to validator")
+		err = reqerr.NewInvalidArgs("JobExportSpec", "job export spec cannot cast to validator").WithComponent("pipleline")
 		return
 	}
 	return vv.Validate()
 }
 
 type GetJobExportInput struct {
-	PipelineToken
+	PandoraToken
 	JobName    string
 	ExportName string
 }
@@ -1957,7 +2070,7 @@ type JobExportDesc struct {
 }
 
 type ListJobExportsInput struct {
-	PipelineToken
+	PandoraToken
 	JobName string
 }
 
@@ -1966,45 +2079,41 @@ type ListJobExportsOutput struct {
 }
 
 type DeleteJobExportInput struct {
-	PipelineToken
+	PandoraToken
 	JobName    string
 	ExportName string
 }
 
 type UploadUdfInput struct {
-	PipelineToken
-	ResourceOwner string
-	UdfName       string
-	Buffer        *bytes.Buffer
+	PandoraToken
+	UdfName string
+	Buffer  *bytes.Buffer
 }
 
 type UploadUdfFromFileInput struct {
-	PipelineToken
-	ResourceOwner string
-	UdfName       string
-	FilePath      string
+	PandoraToken
+	UdfName  string
+	FilePath string
 }
 
 type PutUdfMetaInput struct {
-	PipelineToken
-	ResourceOwner string `json:"-"`
-	UdfName       string `json:"-"`
-	Description   string `json:"description"`
+	PandoraToken
+	UdfName     string `json:"-"`
+	Description string `json:"description"`
 }
 
 const MaxDescriptionLen = 1500
 
 func (e *PutUdfMetaInput) Validate() error {
 	if (len(e.Description)) > MaxDescriptionLen {
-		return reqerr.NewInvalidArgs("PutUdfMeta", fmt.Sprintf("udf description must not be larger than %s", MaxDescriptionLen))
+		return reqerr.NewInvalidArgs("PutUdfMeta", fmt.Sprintf("udf description must not be larger than %d", MaxDescriptionLen)).WithComponent("pipleline")
 	}
 	return nil
 }
 
 type DeleteUdfInfoInput struct {
-	PipelineToken
-	ResourceOwner string
-	UdfName       string
+	PandoraToken
+	UdfName string
 }
 
 type PageRequest struct {
@@ -2014,7 +2123,7 @@ type PageRequest struct {
 }
 
 type ListUdfsInput struct {
-	PipelineToken
+	PandoraToken
 	PageRequest
 	ResourceOwner string
 }
@@ -2030,8 +2139,7 @@ type ListUdfsOutput struct {
 }
 
 type RegisterUdfFunctionInput struct {
-	PipelineToken
-	ResourceOwner   string `json:"-"`
+	PandoraToken
 	FuncName        string `json:"-"`
 	JarName         string `json:"jarName"`
 	ClassName       string `json:"className"`
@@ -2041,22 +2149,21 @@ type RegisterUdfFunctionInput struct {
 
 func (e *RegisterUdfFunctionInput) Validate() error {
 	if (len(e.Description)) > MaxDescriptionLen {
-		return reqerr.NewInvalidArgs("RegisterUdfFunctionInput", fmt.Sprintf("udf function description must not be larger than %s", MaxDescriptionLen))
+		return reqerr.NewInvalidArgs("RegisterUdfFunctionInput", fmt.Sprintf("udf function description must not be larger than %d", MaxDescriptionLen)).WithComponent("pipleline")
 	}
 	if (len(e.FuncDeclaration)) > MaxDescriptionLen {
-		return reqerr.NewInvalidArgs("RegisterUdfFunctionInput", fmt.Sprintf("udf function declaration must not be larger than %s", MaxDescriptionLen))
+		return reqerr.NewInvalidArgs("RegisterUdfFunctionInput", fmt.Sprintf("udf function declaration must not be larger than %d", MaxDescriptionLen)).WithComponent("pipleline")
 	}
 	return nil
 }
 
 type DeregisterUdfFunctionInput struct {
-	PipelineToken
-	ResourceOwner string
-	FuncName      string
+	PandoraToken
+	FuncName string
 }
 
 type ListUdfFunctionsInput struct {
-	PipelineToken
+	PandoraToken
 	PageRequest
 	ResourceOwner string
 	JarNamesIn    []string
@@ -2076,10 +2183,9 @@ type ListUdfFunctionsOutput struct {
 }
 
 type ListBuiltinUdfFunctionsInput struct {
-	PipelineToken
+	PandoraToken
 	PageRequest
-	ResourceOwner string
-	Categories    []string
+	Categories []string
 }
 
 type ListUdfBuiltinFunctionsOutput struct {
@@ -2107,7 +2213,7 @@ type Node struct {
 }
 
 type CreateWorkflowInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string `json:"-"`
 	WorkflowName  string `json:"name"`
 	Region        string `json:"region"`
@@ -2115,7 +2221,7 @@ type CreateWorkflowInput struct {
 }
 
 type UpdateWorkflowInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string           `json:"-"`
 	WorkflowName  string           `json:"name"`
 	Region        string           `json:"region"`
@@ -2123,7 +2229,7 @@ type UpdateWorkflowInput struct {
 }
 
 type DeleteWorkflowInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string `json:"-"`
 	WorkflowName  string `json:"name"`
 }
@@ -2136,7 +2242,7 @@ func (r *DeleteWorkflowInput) Validate() (err error) {
 }
 
 type GetWorkflowInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string `json:"-"`
 	WorkflowName  string `json:"name"`
 }
@@ -2183,7 +2289,7 @@ type NodeStatus struct {
 }
 
 type ListWorkflowInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string
 }
 
@@ -2205,7 +2311,7 @@ func validateWorkflow(name, region string, nodes map[string]*Node) (err error) {
 		}
 	}
 	if region == "" {
-		err = reqerr.NewInvalidArgs("Region", "region should not be empty")
+		err = reqerr.NewInvalidArgs("Region", "region should not be empty").WithComponent("pipleline")
 		return
 	}
 	return
@@ -2226,7 +2332,7 @@ func (r *UpdateWorkflowInput) Validate() (err error) {
 }
 
 type StartWorkflowInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string `json:"-"`
 	WorkflowName  string `json:"name"`
 }
@@ -2248,7 +2354,7 @@ func (r *StopWorkflowInput) Validate() (err error) {
 }
 
 type DagLogSearchInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string `json:"-"`
 	WorkflowName  string `json:"-"`
 	Type          string `json:"type"`
@@ -2304,7 +2410,7 @@ type WorkflowSearchRet struct {
 }
 
 type CreateVariableInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string `json:"-"`
 	Name          string `json:"name"`
 	Type          string `json:"type"`
@@ -2314,7 +2420,7 @@ type CreateVariableInput struct {
 
 func (r *CreateVariableInput) Validate() (err error) {
 	if r.Type == VariableTimeType && r.Format == "" {
-		err = reqerr.NewInvalidArgs("format", "time variable's format should not be empty")
+		err = reqerr.NewInvalidArgs("format", "time variable's format should not be empty").WithComponent("pipleline")
 		return
 	}
 	if err = validateVariableName(r.Name); err != nil {
@@ -2330,7 +2436,7 @@ type UpdateVariableInput CreateVariableInput
 
 func (r *UpdateVariableInput) Validate() (err error) {
 	if r.Type == VariableTimeType && r.Format == "" {
-		err = reqerr.NewInvalidArgs("format", "time variable's format should not be empty")
+		err = reqerr.NewInvalidArgs("format", "time variable's format should not be empty").WithComponent("pipleline")
 		return
 	}
 	if err = validateVariableName(r.Name); err != nil {
@@ -2343,7 +2449,7 @@ func (r *UpdateVariableInput) Validate() (err error) {
 }
 
 type DeleteVariableInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string `json:"-"`
 	Name          string `json:"name"`
 }
@@ -2356,7 +2462,7 @@ func (r *DeleteVariableInput) Validate() (err error) {
 }
 
 type GetVariableInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string `json:"-"`
 	Name          string `json:"name"`
 }
@@ -2376,7 +2482,7 @@ type GetVariableOutput struct {
 }
 
 type ListVariablesInput struct {
-	PipelineToken
+	PandoraToken
 	ResourceOwner string
 }
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/qiniu/logkit/conf"
+	. "github.com/qiniu/logkit/utils/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,8 +24,10 @@ func TestUdpSocketReader(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(metaDir)
 
-	sr, err := NewSocketReader(meta, logkitConf)
+	ssr, err := NewSocketReader(meta, logkitConf)
 	assert.NoError(t, err)
+	sr := ssr.(*SocketReader)
+
 	err = sr.Start()
 	assert.NoError(t, err)
 
@@ -61,8 +64,9 @@ func TestTCPSocketReader(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(metaDir)
 
-	sr, err := NewSocketReader(meta, logkitConf)
+	ssr, err := NewSocketReader(meta, logkitConf)
 	assert.NoError(t, err)
+	sr := ssr.(*SocketReader)
 	err = sr.Start()
 	assert.NoError(t, err)
 
@@ -99,12 +103,13 @@ func TestUnixSocketReader(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(metaDir)
 
-	err = os.Mkdir("TestUnixSocketReader", 0755)
+	err = os.Mkdir("TestUnixSocketReader", DefaultDirPerm)
 	assert.NoError(t, err)
 	defer os.RemoveAll("TestUnixSocketReader")
 
-	sr, err := NewSocketReader(meta, logkitConf)
+	ssr, err := NewSocketReader(meta, logkitConf)
 	assert.NoError(t, err)
+	sr := ssr.(*SocketReader)
 	err = sr.Start()
 	assert.NoError(t, err)
 

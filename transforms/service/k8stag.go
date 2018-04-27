@@ -2,15 +2,12 @@ package service
 
 import (
 	"errors"
+	"fmt"
+	"path/filepath"
 	"strings"
 
-	"fmt"
-
-	"path/filepath"
-
-	"github.com/qiniu/logkit/sender"
 	"github.com/qiniu/logkit/transforms"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
 )
 
 const (
@@ -23,14 +20,14 @@ const (
 
 type K8sTag struct {
 	SourceFileKey string `json:"sourcefilefield"`
-	stats         utils.StatsInfo
+	stats         StatsInfo
 }
 
 func (g *K8sTag) RawTransform(datas []string) ([]string, error) {
 	return datas, errors.New("k8stag transformer not support rawTransform")
 }
 
-func (g *K8sTag) Transform(datas []sender.Data) ([]sender.Data, error) {
+func (g *K8sTag) Transform(datas []Data) ([]Data, error) {
 	var err, ferr error
 	errnums := 0
 	for i := range datas {
@@ -70,7 +67,8 @@ func (g *K8sTag) Transform(datas []sender.Data) ([]sender.Data, error) {
 }
 
 func (g *K8sTag) Description() string {
-	return "k8stag will get kubernetes tags from sourcefile name"
+	//return "k8stag will get kubernetes tags from sourcefile name"
+	return "从kubernetes 存储的文件名称中获取pod、containerID之类的tags信息"
 }
 
 func (g *K8sTag) Type() string {
@@ -84,9 +82,8 @@ func (g *K8sTag) SampleConfig() string {
 	}`
 }
 
-func (g *K8sTag) ConfigOptions() []utils.Option {
-	return []utils.Option{
-		transforms.KeyStageAfterOnly,
+func (g *K8sTag) ConfigOptions() []Option {
+	return []Option{
 		transforms.KeyFieldName,
 	}
 }
@@ -95,7 +92,7 @@ func (g *K8sTag) Stage() string {
 	return transforms.StageAfterParser
 }
 
-func (g *K8sTag) Stats() utils.StatsInfo {
+func (g *K8sTag) Stats() StatsInfo {
 	return g.stats
 }
 

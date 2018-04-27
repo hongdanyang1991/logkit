@@ -1,27 +1,27 @@
 package mgr
 
 import (
-	"encoding/json"
 	"net/http"
 
+	"github.com/json-iterator/go"
 	"github.com/qiniu/logkit/metric"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
 	"github.com/stretchr/testify/assert"
 )
 
 type respMetricUsage struct {
-	Code string         `json:"code"`
-	Data []utils.Option `json:"data"`
+	Code string   `json:"code"`
+	Data []Option `json:"data"`
 }
 
 type respMetricKeys struct {
-	Code string                      `json:"code"`
-	Data map[string][]utils.KeyValue `json:"data"`
+	Code string                `json:"code"`
+	Data map[string][]KeyValue `json:"data"`
 }
 
 type respMetricOptions struct {
-	Code string                    `json:"code"`
-	Data map[string][]utils.Option `json:"data"`
+	Code string              `json:"code"`
+	Data map[string][]Option `json:"data"`
 }
 
 func metricAPITest(p *testParam) {
@@ -33,7 +33,7 @@ func metricAPITest(p *testParam) {
 	respCode, respBody, err := makeRequest(url, http.MethodGet, []byte{})
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
-	if err = json.Unmarshal(respBody, &got1); err != nil {
+	if err = jsoniter.Unmarshal(respBody, &got1); err != nil {
 		t.Fatalf("respBody %v unmarshal failed, error is %v", respBody, err)
 	}
 	assert.Equal(t, metric.GetMetricUsages(), got1.Data)
@@ -43,7 +43,7 @@ func metricAPITest(p *testParam) {
 	respCode, respBody, err = makeRequest(url, http.MethodGet, []byte{})
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
-	if err = json.Unmarshal(respBody, &got2); err != nil {
+	if err = jsoniter.Unmarshal(respBody, &got2); err != nil {
 		t.Fatalf("respBody %v unmarshal failed, error is %v", respBody, err)
 	}
 	assert.Equal(t, metric.GetMetricOptions(), got2.Data)
@@ -53,7 +53,7 @@ func metricAPITest(p *testParam) {
 	respCode, respBody, err = makeRequest(url, http.MethodGet, []byte{})
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
-	if err = json.Unmarshal(respBody, &got3); err != nil {
+	if err = jsoniter.Unmarshal(respBody, &got3); err != nil {
 		t.Fatalf("respBody %v unmarshal failed, error is %v", respBody, err)
 	}
 	assert.Equal(t, metric.GetMetricTypeKey(), got3.Data)

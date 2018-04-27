@@ -7,6 +7,8 @@ import (
 )
 
 type PipelineAPI interface {
+	InitOrUpdateWorkflow(input *InitOrUpdateWorkflowInput) error
+
 	AutoExportToLogDB(*AutoExportToLogDBInput) error
 
 	AutoExportToKODO(*AutoExportToKODOInput) error
@@ -128,6 +130,8 @@ type PipelineAPI interface {
 	GetDefault(RepoSchemaEntry) interface{}
 
 	GetUpdateSchemas(string) (map[string]RepoSchemaEntry, error)
+
+	GetUpdateSchemasWithInput(input *GetRepoInput) (map[string]RepoSchemaEntry, error)
 
 	UploadUdf(input *UploadUdfInput) (err error)
 

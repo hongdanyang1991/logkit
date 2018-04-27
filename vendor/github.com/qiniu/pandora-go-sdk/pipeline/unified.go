@@ -3,6 +3,7 @@ package pipeline
 import (
 	"strings"
 
+	"github.com/qiniu/log"
 	"github.com/qiniu/pandora-go-sdk/base"
 	"github.com/qiniu/pandora-go-sdk/base/reqerr"
 	"github.com/qiniu/pandora-go-sdk/logdb"
@@ -124,15 +125,19 @@ func convertCreate2LogDB(input *CreateRepoForLogDBInput) *logdb.CreateRepoInput 
 	if input.LogRepoName == "" {
 		input.LogRepoName = input.RepoName
 	}
-	return &logdb.CreateRepoInput{
+	linput := &logdb.CreateRepoInput{
 		Region:    input.Region,
 		RepoName:  input.LogRepoName,
-		Schema:    convertSchema2LogDB(input.Schema),
+		Schema:    convertSchema2LogDB(input.Schema, input.AnalyzerInfo),
 		Retention: input.Retention,
 	}
+	if input.AnalyzerInfo.FullText {
+		linput.FullText = logdb.NewFullText(logdb.StandardAnalyzer)
+	}
+	return linput
 }
 
-func convertSchema2LogDB(scs []RepoSchemaEntry) (ret []logdb.RepoSchemaEntry) {
+func convertSchema2LogDB(scs []RepoSchemaEntry, analyzer AnalyzerInfo) (ret []logdb.RepoSchemaEntry) {
 	ret = make([]logdb.RepoSchemaEntry, 0)
 	for _, v := range scs {
 		rp := logdb.RepoSchemaEntry{
@@ -140,7 +145,7 @@ func convertSchema2LogDB(scs []RepoSchemaEntry) (ret []logdb.RepoSchemaEntry) {
 			ValueType: v.ValueType,
 		}
 		if v.ValueType == PandoraTypeMap {
-			rp.Schemas = convertSchema2LogDB(v.Schema)
+			rp.Schemas = convertSchema2LogDB(v.Schema, analyzer)
 			rp.ValueType = logdb.TypeObject
 		}
 		if v.ValueType == PandoraTypeJsonString {
@@ -149,8 +154,22 @@ func convertSchema2LogDB(scs []RepoSchemaEntry) (ret []logdb.RepoSchemaEntry) {
 		if v.ValueType == PandoraTypeArray {
 			rp.ValueType = v.ElemType
 		}
-		if v.ValueType == PandoraTypeString {
-			rp.Analyzer = logdb.StandardAnalyzer
+		if v.ValueType == PandoraTypeString && !analyzer.FullText {
+			// 当 analyzer.Analyzer 这个 map 中有明确的字段分词类型时，按照 map 中的分词类型设置
+			// 否则当 analyzer.Default 不为空时，按照 default 值设置分词类型
+			// 上述两个条件都不符合时，按照标准分词设置
+			exist := false
+			var ana string
+			if analyzer.Analyzer != nil {
+				ana, exist = analyzer.Analyzer[v.Key]
+			}
+			if exist && logdb.Analyzers[ana] {
+				rp.Analyzer = ana
+			} else if logdb.Analyzers[analyzer.Default] {
+				rp.Analyzer = analyzer.Default
+			} else {
+				rp.Analyzer = logdb.StandardAnalyzer
+			}
 		}
 		ret = append(ret, rp)
 	}
@@ -178,7 +197,6 @@ func isInExpandAttr(key string, expandAttr []string) bool {
 	return false
 }
 
-// logkit 开启导出到 tsdb 功能时会调用这个函数，如果不是 metric 信息，走正常的流程，否则根据字段名称前缀 export 到不同的 series 里面
 func (c *Pipeline) AutoExportToTSDB(input *AutoExportToTSDBInput) error {
 	if input.TSDBRepoName == "" {
 		input.TSDBRepoName = input.RepoName
@@ -190,9 +208,11 @@ func (c *Pipeline) AutoExportToTSDB(input *AutoExportToTSDBInput) error {
 		input.Retention = "30d"
 	}
 	repoInfo, err := c.GetRepo(&GetRepoInput{
-		RepoName: input.RepoName,
+		RepoName:     input.RepoName,
+		PandoraToken: input.PipelineGetRepoToken,
 	})
 	if err != nil {
+		log.Error("AutoExportToTSDB get repo from pipeline error", err)
 		return err
 	}
 	tags := make([]string, 0)
@@ -202,16 +222,17 @@ func (c *Pipeline) AutoExportToTSDB(input *AutoExportToTSDBInput) error {
 
 	if !input.IsMetric {
 		return c.CreateForTSDB(&CreateRepoForTSDBInput{
-			Tags:         tags,
-			RepoName:     input.RepoName,
-			TSDBRepoName: input.TSDBRepoName,
-			Region:       repoInfo.Region,
-			Schema:       repoInfo.Schema,
-			Retention:    input.Retention,
-			SeriesName:   input.SeriesName,
-			OmitInvalid:  input.OmitInvalid,
-			OmitEmpty:    input.OmitEmpty,
-			Timestamp:    input.Timestamp,
+			Tags:                 tags,
+			RepoName:             input.RepoName,
+			TSDBRepoName:         input.TSDBRepoName,
+			Region:               repoInfo.Region,
+			Schema:               repoInfo.Schema,
+			Retention:            input.Retention,
+			SeriesName:           input.SeriesName,
+			OmitInvalid:          input.OmitInvalid,
+			OmitEmpty:            input.OmitEmpty,
+			Timestamp:            input.Timestamp,
+			AutoExportTSDBTokens: input.AutoExportTSDBTokens,
 		})
 	}
 
@@ -246,18 +267,18 @@ func (c *Pipeline) AutoExportToTSDB(input *AutoExportToTSDBInput) error {
 	}
 
 	err = c.CreateForMutiExportTSDB(&CreateRepoForMutiExportTSDBInput{
-		RepoName:     input.RepoName,
-		TSDBRepoName: input.TSDBRepoName,
-		Region:       repoInfo.Region,
-		Retention:    input.Retention,
-		OmitInvalid:  input.OmitInvalid,
-		OmitEmpty:    input.OmitEmpty,
-		SeriesMap:    seriesMap,
+		RepoName:             input.RepoName,
+		TSDBRepoName:         input.TSDBRepoName,
+		Region:               repoInfo.Region,
+		Retention:            input.Retention,
+		OmitInvalid:          input.OmitInvalid,
+		OmitEmpty:            input.OmitEmpty,
+		SeriesMap:            seriesMap,
+		AutoExportTSDBTokens: input.AutoExportTSDBTokens,
 	})
 	return err
 }
 
-// 这个api在logkit启动的时候调用一次
 func (c *Pipeline) AutoExportToLogDB(input *AutoExportToLogDBInput) error {
 	if input.LogRepoName == "" {
 		input.LogRepoName = input.RepoName
@@ -267,9 +288,11 @@ func (c *Pipeline) AutoExportToLogDB(input *AutoExportToLogDBInput) error {
 		input.Retention = "30d"
 	}
 	repoInfo, err := c.GetRepo(&GetRepoInput{
-		RepoName: input.RepoName,
+		RepoName:     input.RepoName,
+		PandoraToken: input.PipelineGetRepoToken,
 	})
 	if err != nil {
+		log.Error("AutoExportToLogDB get pipeline repo error", err)
 		return err
 	}
 
@@ -277,21 +300,29 @@ func (c *Pipeline) AutoExportToLogDB(input *AutoExportToLogDBInput) error {
 	if err != nil {
 		return err
 	}
-	logdbschemas := convertSchema2LogDB(repoInfo.Schema)
+	logdbschemas := convertSchema2LogDB(repoInfo.Schema, input.AnalyzerInfo)
 	logdbrepoinfo, err := logdbapi.GetRepo(&logdb.GetRepoInput{
-		RepoName: input.LogRepoName,
+		RepoName:     input.LogRepoName,
+		PandoraToken: input.GetLogDBRepoToken,
 	})
 	if reqerr.IsNoSuchResourceError(err) {
-		err = logdbapi.CreateRepo(&logdb.CreateRepoInput{
-			RepoName:  input.LogRepoName,
-			Region:    repoInfo.Region,
-			Retention: input.Retention,
-			Schema:    logdbschemas,
-		})
+		linput := &logdb.CreateRepoInput{
+			RepoName:     input.LogRepoName,
+			Region:       repoInfo.Region,
+			Retention:    input.Retention,
+			Schema:       logdbschemas,
+			PandoraToken: input.CreateLogDBRepoToken,
+		}
+		if input.AnalyzerInfo.FullText {
+			linput.FullText = logdb.NewFullText(logdb.StandardAnalyzer)
+		}
+		err = logdbapi.CreateRepo(linput)
 		if err != nil && !reqerr.IsExistError(err) {
+			log.Error("AutoExportToLogDB create logdb repo error", err)
 			return err
 		}
 	} else if err != nil {
+		log.Error("AutoExportToLogDB get logdb repo error", err)
 		return err
 	} else {
 		//repo 存在，检查是否需要更新
@@ -305,18 +336,21 @@ func (c *Pipeline) AutoExportToLogDB(input *AutoExportToLogDBInput) error {
 		}
 		if needupdate {
 			if err = logdbapi.UpdateRepo(&logdb.UpdateRepoInput{
-				RepoName:  input.LogRepoName,
-				Retention: logdbrepoinfo.Retention,
-				Schema:    logdbrepoinfo.Schema,
+				RepoName:     input.LogRepoName,
+				Retention:    logdbrepoinfo.Retention,
+				Schema:       logdbrepoinfo.Schema,
+				PandoraToken: input.UpdateLogDBRepoToken,
 			}); err != nil {
+				log.Error("AutoExportToLogDB update logdb repo error", err)
 				return err
 			}
 		}
 	}
 
 	_, err = c.GetExport(&GetExportInput{
-		RepoName:   input.RepoName,
-		ExportName: base.FormExportName(input.RepoName, ExportTypeLogDB),
+		RepoName:     input.RepoName,
+		ExportName:   base.FormExportName(input.RepoName, ExportTypeLogDB),
+		PandoraToken: input.GetExportToken,
 	})
 	if reqerr.IsNoSuchResourceError(err) {
 		logDBSpec := c.FormLogDBSpec(&CreateRepoForLogDBInput{
@@ -327,7 +361,15 @@ func (c *Pipeline) AutoExportToLogDB(input *AutoExportToLogDBInput) error {
 			OmitInvalid: input.OmitInvalid,
 		})
 		exportInput := c.FormExportInput(input.RepoName, ExportTypeLogDB, logDBSpec)
-		return c.CreateExport(exportInput)
+		exportInput.PandoraToken = input.CreateExportToken
+		if err = c.CreateExport(exportInput); err != nil && reqerr.IsExistError(err) {
+			err = nil
+		} else if err != nil {
+			log.Error("AutoExportToLogDB get export error", err)
+		}
+	}
+	if err != nil {
+		log.Error("AutoExportToLogDB get export error", err)
 	}
 	return err
 }
@@ -343,20 +385,33 @@ func (c *Pipeline) AutoExportToKODO(input *AutoExportToKODOInput) error {
 	input.BucketName = strings.Replace(input.BucketName, "_", "-", -1)
 
 	repoInfo, err := c.GetRepo(&GetRepoInput{
-		RepoName: input.RepoName,
+		RepoName:     input.RepoName,
+		PandoraToken: input.PipelineGetRepoToken,
 	})
 	if err != nil {
+		log.Error("AutoExportToKodo GetRepo from pipeline error", err)
 		return err
 	}
 
 	_, err = c.GetExport(&GetExportInput{
-		RepoName:   input.RepoName,
-		ExportName: base.FormExportName(input.RepoName, ExportTypeKODO),
+		RepoName:     input.RepoName,
+		ExportName:   base.FormExportName(input.RepoName, ExportTypeKODO),
+		PandoraToken: input.GetExportToken,
 	})
 	if reqerr.IsNoSuchResourceError(err) {
+		var ak string
+		if c.Config.Ak != "" {
+			ak = c.Config.Ak
+		}
+		if ak == "" && input.CreateExportToken.Token != "" {
+			tks := strings.Split(strings.TrimSpace(strings.TrimPrefix(input.CreateExportToken.Token, "Pandora")), ":")
+			if len(tks) > 0 {
+				ak = tks[0]
+			}
+		}
 		kodoSpec := c.FormKodoSpec(&CreateRepoForKodoInput{
 			Retention: input.Retention,
-			Ak:        c.Config.Ak,
+			Ak:        ak,
 			Email:     input.Email,
 			Bucket:    input.BucketName,
 			RepoName:  input.RepoName,
@@ -365,7 +420,16 @@ func (c *Pipeline) AutoExportToKODO(input *AutoExportToKODOInput) error {
 			Format:    input.Format,
 		})
 		exportInput := c.FormExportInput(input.RepoName, ExportTypeKODO, kodoSpec)
-		return c.CreateExport(exportInput)
+		exportInput.PandoraToken = input.CreateExportToken
+		if err = c.CreateExport(exportInput); err != nil && reqerr.IsExistError(err) {
+			err = nil
+		} else if err != nil {
+			log.Error("AutoExportToKodo create export error", err)
+			return err
+		}
+	}
+	if err != nil {
+		log.Error("AutoExportToKodo get export error", err)
 	}
 	return err
 }

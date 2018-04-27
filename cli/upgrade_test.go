@@ -3,7 +3,6 @@ package cli
 import (
 	"archive/tar"
 	"compress/gzip"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,9 +15,11 @@ import (
 	"time"
 
 	"github.com/qiniu/log"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
 
+	"github.com/json-iterator/go"
 	"github.com/labstack/echo"
+	utilsos "github.com/qiniu/logkit/utils/os"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -92,65 +93,65 @@ func TestParseCliVersion(t *testing.T) {
 	}
 }
 
-func TestIsNeedUpgrade(t *testing.T) {
+func TestIsUpgradeNeeded(t *testing.T) {
 	testData := []struct {
-		cur  string
-		last string
-		exp  bool
+		cur    string
+		latest string
+		exp    bool
 	}{
 		{
-			cur:  "v1",
-			last: "v1",
-			exp:  false,
+			cur:    "v1",
+			latest: "v1",
+			exp:    false,
 		},
 		{
-			cur:  "v1.1",
-			last: "v1",
-			exp:  false,
+			cur:    "v1.1",
+			latest: "v1",
+			exp:    false,
 		},
 		{
-			cur:  "v2",
-			last: "v1.1",
-			exp:  false,
+			cur:    "v2",
+			latest: "v1.1",
+			exp:    false,
 		},
 		{
-			cur:  "v1.1.0",
-			last: "v1.1",
-			exp:  false,
+			cur:    "v1.1.0",
+			latest: "v1.1",
+			exp:    false,
 		},
 		{
-			cur:  "v1.2.1",
-			last: "v1.2.2",
-			exp:  true,
+			cur:    "v1.2.1",
+			latest: "v1.2.2",
+			exp:    true,
 		},
 		{
-			cur:  "v1.2.3",
-			last: "v1.2.4",
-			exp:  true,
+			cur:    "v1.2.3",
+			latest: "v1.2.4",
+			exp:    true,
 		},
 		{
-			cur:  "v1.0.1",
-			last: "v1.0",
-			exp:  false,
+			cur:    "v1.0.1",
+			latest: "v1.0",
+			exp:    false,
 		},
 		{
-			cur:  "v1.9.9",
-			last: "v2.0.0",
-			exp:  true,
+			cur:    "v1.9.9",
+			latest: "v2.0.0",
+			exp:    true,
 		},
 		{
-			cur:  "v1.0.2",
-			last: "v1.0.1",
-			exp:  false,
+			cur:    "v1.0.2",
+			latest: "v1.0.1",
+			exp:    false,
 		},
 		{
-			cur:  "v1.0.1",
-			last: "v1.1.0",
-			exp:  true,
+			cur:    "v1.0.1",
+			latest: "v1.1.0",
+			exp:    true,
 		},
 	}
 	for _, val := range testData {
-		got, err := isNeedUpgrade(val.cur, val.last)
+		got, err := isUpgradeNeeded(val.cur, val.latest)
 		assert.NoError(t, err)
 		assert.Equal(t, val.exp, got)
 	}
@@ -169,31 +170,31 @@ func TestGetPackNameByKernelPlatform(t *testing.T) {
 		packName string
 	}{
 		{
-			kernel:   GoosLinux,
+			kernel:   GoOSLinux,
 			platform: Arch386,
 			version:  "v1.3.2",
 			packName: linux32,
 		},
 		{
-			kernel:   GoosLinux,
+			kernel:   GoOSLinux,
 			platform: Arch64,
 			version:  "v1.3.2",
 			packName: linux64,
 		},
 		{
-			kernel:   GoosWindows,
+			kernel:   GoOSWindows,
 			platform: Arch386,
 			version:  "v1.3.2",
 			packName: win32,
 		},
 		{
-			kernel:   GoosWindows,
+			kernel:   GoOSWindows,
 			platform: Arch64,
 			version:  "v1.3.2",
 			packName: win64,
 		},
 		{
-			kernel:   GoosMac,
+			kernel:   GoOSMac,
 			platform: Arch386,
 			version:  "v1.3.2",
 			packName: macName,
@@ -224,13 +225,13 @@ func TestMoveFiles(t *testing.T) {
 	filePathDst1 := filepath.Join(dirPath2, fileName1)
 	filePathDst2 := filepath.Join(dirPath2, fileName2)
 	os.RemoveAll(rootDir)
-	if err = os.Mkdir(rootDir, 0755); err != nil {
+	if err = os.Mkdir(rootDir, DefaultDirPerm); err != nil {
 		t.Fatalf("mmake dir %v error, %v", rootDir, err)
 	}
-	if err = os.Mkdir(dirPath1, 0755); err != nil {
+	if err = os.Mkdir(dirPath1, DefaultDirPerm); err != nil {
 		t.Fatalf("mmake dir %v error, %v", rootDir, err)
 	}
-	if err = os.Mkdir(dirPath2, 0755); err != nil {
+	if err = os.Mkdir(dirPath2, DefaultDirPerm); err != nil {
 		t.Fatalf("mmake dir %v error, %v", rootDir, err)
 	}
 	defer os.RemoveAll(rootDir)
@@ -351,15 +352,15 @@ func (m *mockGithub) getParams(c echo.Context) (errType string, err error) {
 }
 
 func (m *mockGithub) respFunction(c echo.Context, data map[string]interface{}) error {
-	c.Response().Header().Set(ContentType, ApplicationJson)
+	c.Response().Header().Set(ContentTypeHeader, ApplicationJson)
 	c.Response().Header().Set(RateLimitReset, data[RateLimitReset].(string))
 	c.Response().Header().Set(RateLimitRemaining, data[RateLimitRemaining].(string))
 	c.Response().WriteHeader(data["statusCode"].(int))
-	return json.NewEncoder(c.Response()).Encode(data["data"])
+	return jsoniter.NewEncoder(c.Response()).Encode(data["data"])
 }
 
 // 请求含有错误参数，该函数通过错误参数来构造不同的错误
-func (m *mockGithub) getLastRelease() echo.HandlerFunc {
+func (m *mockGithub) getLatestRelease() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		data := map[string]interface{}{
 			"url":  "https://api.github.com/repos/qiniu/logkit/releases/8810555",
@@ -428,19 +429,19 @@ func TestRestRequest(t *testing.T) {
 	dirName := "TestRestRequest"
 	rootDir := filepath.Join(pwd, dirName)
 	os.RemoveAll(rootDir)
-	if err = os.Mkdir(rootDir, 0755); err != nil {
+	if err = os.Mkdir(rootDir, DefaultDirPerm); err != nil {
 		t.Fatalf("mkdir %v error, error is %v", rootDir, err)
 	}
 	defer os.RemoveAll(rootDir)
 
-	osInfo := utils.GetOSInfo()
+	osInfo := utilsos.GetOSInfo()
 	tarDirName := "tarPath"
 	tarfileName, err := getPackNameByKernelPlatform(osInfo.Kernel, osInfo.Platform, "v1.4.1")
 	assert.NoError(t, err)
 	tarPath := filepath.Join(rootDir, tarDirName)
 	tarfilePath := filepath.Join(rootDir, tarDirName, tarfileName)
 
-	if err = os.Mkdir(tarPath, 0755); err != nil {
+	if err = os.Mkdir(tarPath, DefaultDirPerm); err != nil {
 		t.Fatalf("mkdir %v error, error is %v", tarPath, err)
 	}
 
@@ -448,10 +449,10 @@ func TestRestRequest(t *testing.T) {
 	logkit := "123456789"
 	filePathDir := filepath.Join(rootDir, "_package")
 	filePathDirDir := filepath.Join(filePathDir, "package1")
-	if err = os.Mkdir(filePathDir, 0755); err != nil {
+	if err = os.Mkdir(filePathDir, DefaultDirPerm); err != nil {
 		t.Fatalf("mkdir %v error, error is %v", filePathDir, err)
 	}
-	if err = os.Mkdir(filePathDirDir, 0755); err != nil {
+	if err = os.Mkdir(filePathDirDir, DefaultDirPerm); err != nil {
 		t.Fatalf("mkdir %v error, error is %v", filePathDir, err)
 	}
 	filePath1 := filepath.Join(filePathDir, "file")
@@ -481,7 +482,7 @@ func TestRestRequest(t *testing.T) {
 		packageName: tarfileName,
 	}
 	router := echo.New()
-	router.GET("/test/github/latest", github.getLastRelease())
+	router.GET("/test/github/latest", github.getLatestRelease())
 	router.GET("/test/github/release", github.getReleasePackage())
 
 	var port = 9001
@@ -521,9 +522,9 @@ func TestRestRequest(t *testing.T) {
 
 	c := make(chan string)
 	funcMap := map[string]func(t *testing.T, rootDir, url string){
-		"testCheckLastVersion": testCheckLastVersion,
-		"testDownloadPackage":  testDownloadPackage,
-		"testDecompress":       testDecompress,
+		"testCheckLatestVersion": testCheckLatestVersion,
+		"testDownloadPackage":    testDownloadPackage,
+		"testDecompress":         testDecompress,
 	}
 	for k, f := range funcMap {
 		go func(k string, f func(t *testing.T, rtDir, url string), c chan string) {
@@ -537,8 +538,8 @@ func TestRestRequest(t *testing.T) {
 	}
 }
 
-func testCheckLastVersion(t *testing.T, _, url string) {
-	osInfo := utils.GetOSInfo()
+func testCheckLatestVersion(t *testing.T, _, url string) {
+	osInfo := utilsos.GetOSInfo()
 	packageName, _ := getPackNameByKernelPlatform(osInfo.Kernel, osInfo.Platform, "v1.4.1")
 	expReleaseInfo := ReleaseInfo{
 		Url:  "https://api.github.com/repos/qiniu/logkit/releases/8810555",
@@ -565,49 +566,49 @@ func testCheckLastVersion(t *testing.T, _, url string) {
 
 	// 测试正常情况
 	uri := url + "/test/github/latest"
-	gotReleaseInfo, err := checkLastVersion(uri)
+	gotReleaseInfo, err := checkLatestVersion(uri)
 	assert.NoError(t, err)
 	assert.Equal(t, expReleaseInfo, gotReleaseInfo)
 
 	// 测试服务器出错的情况
 	uri = url + "/test/github/latest?error=statusCode500"
-	gotReleaseInfo, err = checkLastVersion(uri)
+	gotReleaseInfo, err = checkLatestVersion(uri)
 	assert.Error(t, err)
 	assert.Equal(t, true, strings.Contains(err.Error(), "test internal server error"))
 
 	// 测试超过请求次数
 	uri = url + "/test/github/latest?error=remaining0"
-	gotReleaseInfo, err = checkLastVersion(uri)
+	gotReleaseInfo, err = checkLatestVersion(uri)
 	assert.Error(t, err)
 	assert.Equal(t, true, strings.Contains(err.Error(), "please try again after 60 minutes"))
 
 	// 测试返回的 version 有问题
 	uri = url + "/test/github/latest?error=noName"
-	gotReleaseInfo, err = checkLastVersion(uri)
+	gotReleaseInfo, err = checkLatestVersion(uri)
 	assert.NoError(t, err)
-	needUpdate, err := isNeedUpgrade("v1.4.0", gotReleaseInfo.Name)
+	needUpdate, err := isUpgradeNeeded("v1.4.0", gotReleaseInfo.Name)
 	assert.Equal(t, false, needUpdate)
 	assert.Error(t, err)
 
 	// 测试返回的 json 格式有问题
 	uri = url + "/test/github/latest?error=jsonError"
-	gotReleaseInfo, err = checkLastVersion(uri)
+	gotReleaseInfo, err = checkLatestVersion(uri)
 	assert.Error(t, err)
 }
 
 func testDownloadPackage(t *testing.T, rtDir, url string) {
 	dirName := "testDownloadPackage"
 	rootDir := filepath.Join(rtDir, dirName)
-	if err := os.Mkdir(rootDir, 0755); err != nil {
+	if err := os.Mkdir(rootDir, DefaultDirPerm); err != nil {
 		t.Fatalf("mkdir %v error, error is %v", rootDir, err)
 	}
-	osInfo := utils.GetOSInfo()
+	osInfo := utilsos.GetOSInfo()
 	packageName, _ := getPackNameByKernelPlatform(osInfo.Kernel, osInfo.Platform, "v1.4.1")
 	packageFilePath := filepath.Join(rootDir, packageName)
 
 	// 测试正常情况
 	uri := url + "/test/github/latest"
-	releaseInfo, err := checkLastVersion(uri)
+	releaseInfo, err := checkLatestVersion(uri)
 	assert.NoError(t, err)
 	downloadUrl := ""
 	for _, val := range releaseInfo.Assets {
@@ -638,15 +639,15 @@ func testDownloadPackage(t *testing.T, rtDir, url string) {
 func testDecompress(t *testing.T, rtDir, url string) {
 	dirName := "testDecompress"
 	rootDir := filepath.Join(rtDir, dirName)
-	if err := os.Mkdir(rootDir, 0755); err != nil {
+	if err := os.Mkdir(rootDir, DefaultDirPerm); err != nil {
 		t.Fatalf("mkdir %v error, error is %v", rootDir, err)
 	}
-	osInfo := utils.GetOSInfo()
+	osInfo := utilsos.GetOSInfo()
 	packageName, _ := getPackNameByKernelPlatform(osInfo.Kernel, osInfo.Platform, "v1.4.1")
 	packageFilePath := filepath.Join(rootDir, packageName)
 
 	uri := url + "/test/github/latest"
-	releaseInfo, err := checkLastVersion(uri)
+	releaseInfo, err := checkLatestVersion(uri)
 	assert.NoError(t, err)
 	downloadUrl := ""
 	for _, val := range releaseInfo.Assets {
@@ -665,7 +666,7 @@ func testDecompress(t *testing.T, rtDir, url string) {
 	assert.NoError(t, err)
 
 	unpackDir := filepath.Join(rootDir, strconv.FormatInt(time.Now().Unix(), 10))
-	if err := os.Mkdir(unpackDir, 0755); err != nil {
+	if err := os.Mkdir(unpackDir, DefaultDirPerm); err != nil {
 		t.Fatalf("mkdir %v error, error is %v", unpackDir, err)
 	}
 	unpackPath, err := decompress(packageFilePath, unpackDir)

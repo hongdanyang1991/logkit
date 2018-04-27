@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"crypto/tls"
+
 	"github.com/qiniu/pandora-go-sdk/base"
 	"github.com/qiniu/pandora-go-sdk/base/config"
 	"github.com/qiniu/pandora-go-sdk/base/request"
@@ -23,10 +25,10 @@ func NewConfig() *config.Config {
 }
 
 func New(c *config.Config) (TsdbAPI, error) {
-	return newClient(c)
+	return NewDefaultClient(c)
 }
 
-func newClient(c *config.Config) (p *Tsdb, err error) {
+func NewDefaultClient(c *config.Config) (p *Tsdb, err error) {
 	if c.TsdbEndpoint == "" {
 		c.TsdbEndpoint = c.Endpoint
 	}
@@ -44,6 +46,10 @@ func newClient(c *config.Config) (p *Tsdb, err error) {
 			KeepAlive: 30 * time.Second,
 		}).Dial,
 		ResponseHeaderTimeout: c.ResponseTimeout,
+		TLSClientConfig:       &tls.Config{},
+	}
+	if c.AllowInsecureServer {
+		t.TLSClientConfig.InsecureSkipVerify = true
 	}
 
 	p = &Tsdb{
@@ -60,7 +66,7 @@ func (c *Tsdb) newRequest(op *request.Operation, token string, v interface{}) *r
 	return req
 }
 
-func (c *Tsdb) newOperation(opName string, args ...interface{}) *request.Operation {
+func (c *Tsdb) NewOperation(opName string, args ...interface{}) *request.Operation {
 	var method, urlTmpl string
 	switch opName {
 	case base.OpCreateRepo:

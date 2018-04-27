@@ -2,20 +2,21 @@ package parser
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/qiniu/logkit/conf"
-	"github.com/qiniu/logkit/sender"
 	"github.com/qiniu/logkit/times"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
 
+	"github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 )
 
-var csvBench []sender.Data
+var csvBench []Data
 
 func Benchmark_CsvParseLine(b *testing.B) {
 	c := conf.MapConf{}
@@ -25,7 +26,7 @@ func Benchmark_CsvParseLine(b *testing.B) {
 	c[KeyCSVSplitter] = " "
 	p, _ := NewCsvParser(c)
 
-	var m []sender.Data
+	var m []Data
 	for n := 0; n < b.N; n++ {
 		m, _ = p.Parse([]string{`123 fufu 3.16 {\"x\":1,\"y\":[\"xx:12\"]}`})
 	}
@@ -38,30 +39,31 @@ func Test_CsvParser(t *testing.T) {
 	c[KeyParserType] = "csv"
 	c[KeyCSVSchema] = "a long, b string, c float, d jsonmap,e date"
 	c[KeyCSVSplitter] = " "
+	c[KeyDisableRecordErrData] = "true"
 	parser, err := NewCsvParser(c)
 	if err != nil {
 		t.Error(err)
 	}
 	tmstr := time.Now().Format(time.RFC3339Nano)
 	lines := []string{
-		`123 fufu 3.14 {"x":1,"y":"2"} ` + tmstr,       //correct
-		`cc jj uu {"x":1,"y":"2"} ` + tmstr,            // error => uu 不是float
-		`123 fufu 3.15 999 ` + tmstr,                   //error，999不是jsonmap
-		`123 fufu 3.16 {"x":1,"y":["xx:12"]} ` + tmstr, //correct
+		`1 fufu 3.14 {"x":1,"y":"2"} ` + tmstr,       //correct
+		`cc jj uu {"x":1,"y":"2"} ` + tmstr,          // error => uu 不是float
+		`2 fufu 3.15 999 ` + tmstr,                   //error，999不是jsonmap
+		`3 fufu 3.16 {"x":1,"y":["xx:12"]} ` + tmstr, //correct
 		`   `,
-		`123 fufu 3.17  ` + tmstr, //correct,jsonmap允许为空
+		`4 fufu 3.17  ` + tmstr, //correct,jsonmap允许为空
 	}
 	datas, err := parser.Parse(lines)
-	if c, ok := err.(*utils.StatsError); ok {
+	if c, ok := err.(*StatsError); ok {
 		err = c.ErrorDetail
 	}
 	assert.Error(t, err)
 
 	exp := make(map[string]interface{})
-	exp["a"] = int64(123)
+	exp["a"] = int64(1)
 	exp["b"] = "fufu"
 	exp["c"] = 3.14
-	exp["d-x"] = float64(1)
+	exp["d-x"] = json.Number("1")
 	exp["d-y"] = "2"
 	exp["e"] = tmstr
 	for k, v := range datas[0] {
@@ -71,16 +73,60 @@ func Test_CsvParser(t *testing.T) {
 	}
 
 	expNum := 3
-	if len(datas) != expNum {
-		t.Errorf("correct line should be %v, but got %v", expNum, len(datas))
-	}
-	if datas[0]["a"] != int64(123) {
-		t.Errorf("a should be 123  but got %v", datas[0]["a"])
+	assert.Equal(t, expNum, len(datas), fmt.Sprintln(datas))
+
+	if datas[0]["a"] != int64(1) {
+		t.Errorf("a should be 1 but got %v", datas[0]["a"])
 	}
 	if "fufu" != datas[0]["b"] {
 		t.Error("b should be fufu")
 	}
 	assert.EqualValues(t, parser.Name(), "testparser")
+}
+
+func Test_CsvParserForErrData(t *testing.T) {
+	c := conf.MapConf{}
+	c[KeyParserName] = "testparser"
+	c[KeyParserType] = "csv"
+	c[KeyCSVSchema] = "a long, b string, c float, d jsonmap,e date"
+	c[KeyCSVSplitter] = " "
+	c[KeyDisableRecordErrData] = "false"
+	parser, err := NewCsvParser(c)
+	if err != nil {
+		t.Error(err)
+	}
+	tmstr := time.Now().Format(time.RFC3339Nano)
+	lines := []string{
+		`1 fufu 3.14 {"x":1,"y":"2"} ` + tmstr,       //correct
+		`cc jj uu {"x":1,"y":"2"} ` + tmstr,          // error => uu 不是float
+		`2 fufu 3.15 999 ` + tmstr,                   //error，999不是jsonmap
+		`3 fufu 3.16 {"x":1,"y":["xx:12"]} ` + tmstr, //correct
+		`   `,
+		`4 fufu 3.17  ` + tmstr, //correct,jsonmap允许为空
+	}
+	datas, err := parser.Parse(lines)
+	if c, ok := err.(*StatsError); ok {
+		err = c.ErrorDetail
+	}
+	assert.Error(t, err)
+
+	exp := make(map[string]interface{})
+	exp["a"] = int64(1)
+	exp["b"] = "fufu"
+	exp["c"] = 3.14
+	exp["d-x"] = json.Number("1")
+	exp["d-y"] = "2"
+	exp["e"] = tmstr
+	for k, v := range datas[0] {
+		if v != exp[k] {
+			t.Errorf("expect %v but got %v", v, exp[k])
+		}
+	}
+
+	assert.Equal(t, 6, len(datas), "parse lines error")
+
+	expErrData := `2 fufu 3.15 999 ` + tmstr
+	assert.Equal(t, expErrData, datas[2]["pandora_stash"])
 }
 
 func Test_Jsonmap(t *testing.T) {
@@ -97,15 +143,15 @@ func Test_Jsonmap(t *testing.T) {
 		"123 {\"x\":1,\"y\":\"2\"} {\"x\":1,\"y\":\"2\",\"z\":\"3\"} {\"x\":1.0,\"y\":\"2\",\"z\":\"3.0\"}",
 	}
 	datas, err := parser.Parse(lines)
-	if c, ok := err.(*utils.StatsError); ok {
+	if c, ok := err.(*StatsError); ok {
 		err = c.ErrorDetail
 	}
 	if err != nil {
 		t.Error(err)
 	}
 	d := datas[0]
-	if d["f-x"] != 1.0 {
-		t.Errorf("f-x should be float 1 but %v %v", reflect.TypeOf(d["f-x"]), d["f-x"])
+	if d["f-x"] != json.Number("1.0") {
+		t.Errorf("f-x should be json.Number 1.0 but %v %v", reflect.TypeOf(d["f-x"]), d["f-x"])
 	}
 	if d["f-z"] != 3.0 {
 		t.Errorf("f-z should be float 3.0 but type %v %v", reflect.TypeOf(d["f-z"]), d["f-z"])
@@ -135,11 +181,11 @@ func Test_CsvParserLabel(t *testing.T) {
 		"123 fufu 3.14 999",
 	}
 	datas, err := parser.Parse(lines)
-	if c, ok := err.(*utils.StatsError); ok {
+	if c, ok := err.(*StatsError); ok {
 		err = c.ErrorDetail
 	}
 	assert.Error(t, err)
-	if len(datas) != 1 {
+	if len(datas) != 3 {
 		t.Errorf("correct line should be one, but got %v", len(datas))
 	}
 	if datas[0]["a"] != int64(123) {
@@ -151,7 +197,8 @@ func Test_CsvParserLabel(t *testing.T) {
 	if "nb1684" != datas[0]["d"] {
 		t.Error("d should be nb1684")
 	}
-
+	expErrData := "cc jj uu"
+	assert.Equal(t, expErrData, datas[1]["pandora_stash"])
 }
 
 func Test_CsvParserDupColumn1(t *testing.T) {
@@ -201,7 +248,7 @@ func Test_ParseField(t *testing.T) {
 func Test_convertValue(t *testing.T) {
 	jsonraw := "{\"a\":null}"
 	m := make(map[string]interface{})
-	if err := json.Unmarshal([]byte(jsonraw), &m); err != nil {
+	if err := jsoniter.Unmarshal([]byte(jsonraw), &m); err != nil {
 		t.Error(err)
 	}
 	for _, v := range m {
@@ -235,12 +282,12 @@ func TestRename(t *testing.T) {
 		`REQ	REPORT	15112467445566096	POST	/v1/activate	{"Accept-Encoding":"gzip","Content-Length":"0","Host":"10.200.20.68:2308","IP":"10.200.20.41","User-Agent":"Go-http-client/1.1"}		200    	{"Content-Length":"55","Content-Type":"application/json","X-Log":["REPORT:1"],"X-Reqid":"pyAAAO0mQ0HoBvkU"}	{"user":"13805xxxx4","password":"abcjofewfj"}	55	14946`,
 	}
 	gotDatas, err := parser.Parse(lines)
-	if c, ok := err.(*utils.StatsError); ok {
+	if c, ok := err.(*StatsError); ok {
 		err = c.ErrorDetail
 	}
 	assert.NoError(t, err)
-	expDatas := []sender.Data{
-		sender.Data{
+	expDatas := []Data{
+		Data{
 			"logType":                   "REQ",
 			"service":                   "REPORT",
 			"timestamp":                 "15112467445566096",
@@ -278,12 +325,12 @@ func TestRename(t *testing.T) {
 	parser, err = NewCsvParser(c)
 	assert.NoError(t, err)
 	gotDatas, err = parser.Parse(lines)
-	if c, ok := err.(*utils.StatsError); ok {
+	if c, ok := err.(*StatsError); ok {
 		err = c.ErrorDetail
 	}
 	assert.NoError(t, err)
-	expDatas = []sender.Data{
-		sender.Data{
+	expDatas = []Data{
+		Data{
 			"logType":                   "REQ",
 			"service":                   "REPORT",
 			"timestamp":                 "15112467445566096",
@@ -316,4 +363,147 @@ func TestRename(t *testing.T) {
 			assert.Equal(t, exp, got)
 		}
 	}
+}
+
+func TestJsonMap(t *testing.T) {
+	fd := field{
+		name:     "c",
+		dataType: TypeJsonMap,
+	}
+	testx := "999"
+	data, err := fd.ValueParse(testx, 0)
+	assert.Error(t, err)
+	assert.Equal(t, data, Data{})
+}
+
+func TestGetUnmachedMessage(t *testing.T) {
+	got := getUnmachedMessage([]string{"a", "b"}, []field{{name: "a"}})
+	assert.Equal(t, `matched: [a]=>[a],  unmatched log: [b]`, got)
+	got = getUnmachedMessage([]string{"a"}, []field{{name: "a"}, {name: "b"}})
+	assert.Equal(t, `matched: [a]=>[a],  unmatched schema: [b]`, got)
+}
+
+func TestAllMoreName(t *testing.T) {
+	c := conf.MapConf{}
+	c[KeyParserName] = "TestAllMoreName"
+	c[KeyParserType] = "csv"
+	c[KeyCSVSchema] = "logType string"
+	c[KeyCSVSplitter] = "|"
+	c[KeyCSVAllowMore] = "ha"
+	pp, err := NewCsvParser(c)
+	assert.NoError(t, err)
+	datas, err := pp.Parse([]string{"a|b|c|d"})
+	if c, ok := err.(*StatsError); ok {
+		err = c.ErrorDetail
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, []Data{{"ha0": "b", "logType": "a", "ha1": "c", "ha2": "d"}}, datas)
+
+	datas, err = pp.Parse([]string{"a"})
+	if c, ok := err.(*StatsError); ok {
+		err = c.ErrorDetail
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, []Data{{"logType": "a"}}, datas)
+}
+
+func TestAllowLess(t *testing.T) {
+	c := conf.MapConf{}
+	c[KeyParserName] = "TestAllowLess"
+	c[KeyParserType] = "csv"
+	c[KeyCSVSchema] = "logType string,a long,b float,c string"
+	c[KeyCSVSplitter] = "|"
+	c[KeyCSVAllowMore] = "ha"
+	pp, err := NewCsvParser(c)
+	assert.NoError(t, err)
+	datas, err := pp.Parse([]string{"a|1|1.2|d"})
+	if c, ok := err.(*StatsError); ok {
+		err = c.ErrorDetail
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, []Data{{"a": int64(1), "logType": "a", "b": 1.2, "c": "d"}}, datas)
+
+	datas, err = pp.Parse([]string{"a|1|1.2|d|xx|yy"})
+	if c, ok := err.(*StatsError); ok {
+		err = c.ErrorDetail
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, []Data{{"a": int64(1), "logType": "a", "b": 1.2, "c": "d", "ha0": "xx", "ha1": "yy"}}, datas)
+
+	datas, err = pp.Parse([]string{"a|1"})
+	if c, ok := err.(*StatsError); ok {
+		err = c.ErrorDetail
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, []Data{{"a": int64(1), "logType": "a"}}, datas)
+
+	datas, err = pp.Parse([]string{"a|1.2|1.2|d"})
+	if c, ok := err.(*StatsError); ok {
+		err = c.ErrorDetail
+	}
+	assert.Error(t, err)
+}
+
+func TestIgnoreField(t *testing.T) {
+	c := conf.MapConf{}
+	c[KeyParserName] = "TestIgnoreField"
+	c[KeyParserType] = "csv"
+	c[KeyCSVSchema] = "logType string,a long,b float,c string"
+	c[KeyCSVSplitter] = "|"
+	c[KeyCSVIgnoreInvalidField] = "true"
+	c[KeyCSVAllowNoMatch] = "false"
+	pp, err := NewCsvParser(c)
+	assert.NoError(t, err)
+	datas, err := pp.Parse([]string{"a|1.2|1.2|d"})
+	if c, ok := err.(*StatsError); ok {
+		err = c.ErrorDetail
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, []Data{{"logType": "a", "b": 1.2, "c": "d"}}, datas)
+
+	datas, err = pp.Parse([]string{"a|1.2|1.2|d|xx"})
+	if c, ok := err.(*StatsError); ok {
+		err = c.ErrorDetail
+	}
+	assert.Error(t, err)
+}
+
+func TestAllowNotMatch(t *testing.T) {
+	c := conf.MapConf{}
+	c[KeyParserName] = "TestAllowNotMatch"
+	c[KeyParserType] = "csv"
+	c[KeyCSVSchema] = "logType string,a long,b float,c string"
+	c[KeyCSVSplitter] = "|"
+	c[KeyCSVAllowNoMatch] = "true"
+	pp, err := NewCsvParser(c)
+	assert.NoError(t, err)
+	datas, err := pp.Parse([]string{"a|1|1.2|d|e"})
+	if c, ok := err.(*StatsError); ok {
+		err = c.ErrorDetail
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, []Data{{"logType": "a", "a": int64(1), "b": 1.2, "c": "d"}}, datas)
+
+	datas, err = pp.Parse([]string{"a|1|1.2"})
+	if c, ok := err.(*StatsError); ok {
+		err = c.ErrorDetail
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, []Data{{"logType": "a", "a": int64(1), "b": 1.2}}, datas)
+}
+
+func TestCsvlastempty(t *testing.T) {
+	c := conf.MapConf{}
+	c[KeyParserName] = "TestCsvlastempty"
+	c[KeyParserType] = "csv"
+	c[KeyCSVSchema] = "logType string,a long,b float,c string"
+	c[KeyCSVSplitter] = "\t"
+	pp, err := NewCsvParser(c)
+	assert.NoError(t, err)
+	datas, err := pp.Parse([]string{"a\t1\t1.2\t "})
+	if c, ok := err.(*StatsError); ok {
+		err = c.ErrorDetail
+	}
+	assert.NoError(t, err)
+	assert.Equal(t, []Data{{"logType": "a", "a": int64(1), "b": 1.2, "c": " "}}, datas)
 }

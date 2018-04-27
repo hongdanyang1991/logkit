@@ -3,7 +3,6 @@ package mgr
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,23 +17,27 @@ import (
 	"testing"
 	"time"
 
-	"github.com/labstack/echo"
 	"github.com/qiniu/logkit/conf"
 	"github.com/qiniu/logkit/parser"
 	"github.com/qiniu/logkit/reader"
-	"github.com/qiniu/logkit/sender"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
+
+	"sync"
+
+	"github.com/json-iterator/go"
+	"github.com/labstack/echo"
+	"github.com/qiniu/logkit/router"
 	"github.com/stretchr/testify/assert"
 )
 
 type respModeUsages struct {
-	Code string           `json:"code"`
-	Data []utils.KeyValue `json:"data"`
+	Code string     `json:"code"`
+	Data []KeyValue `json:"data"`
 }
 
 type respModeKeyOptions struct {
-	Code string                    `json:"code"`
-	Data map[string][]utils.Option `json:"data"`
+	Code string              `json:"code"`
+	Data map[string][]Option `json:"data"`
 }
 
 type respSampleLogs struct {
@@ -45,6 +48,11 @@ type respSampleLogs struct {
 type respErrorCode struct {
 	Code string            `json:"code"`
 	Data map[string]string `json:"data"`
+}
+
+type respDataMessage struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 type testParam struct {
@@ -60,7 +68,7 @@ func getRunnerConfig(name, logPath, metaPath, mode, senderPath string) ([]byte, 
 			MaxBatchLen:      1,
 			MaxBatchSize:     200,
 			CollectInterval:  1,
-			MaxBatchInteval:  1,
+			MaxBatchInterval: 1,
 			MaxBatchTryTimes: 3,
 		},
 		ReaderConfig: conf.MapConf{
@@ -80,10 +88,14 @@ func getRunnerConfig(name, logPath, metaPath, mode, senderPath string) ([]byte, 
 			"file_send_path": senderPath,
 		}},
 	}
-	return json.Marshal(runnerConf)
+	return jsoniter.Marshal(runnerConf)
 }
 
 func getRunnerStatus(rn, lp, rs string, rdc, rds, pe, ps, se, ss int64) map[string]RunnerStatus {
+	unit := "bytes"
+	if rs != RunnerRunning {
+		unit = ""
+	}
 	return map[string]RunnerStatus{
 		rn: {
 			Name:             rn,
@@ -93,17 +105,20 @@ func getRunnerStatus(rn, lp, rs string, rdc, rds, pe, ps, se, ss int64) map[stri
 			RunningStatus:    rs,
 			ReadSpeedTrend:   "",
 			ReadSpeedTrendKb: "",
-			Lag: RunnerLag{
-				Size:  0,
-				Files: 0,
+			Lag: LagInfo{
+				Size:     0,
+				SizeUnit: unit,
 			},
-			ParserStats: utils.StatsInfo{
+			ReaderStats: StatsInfo{
+				Success: rdc,
+			},
+			ParserStats: StatsInfo{
 				Errors:  pe,
 				Success: ps,
 				Trend:   "",
 			},
-			TransformStats: make(map[string]utils.StatsInfo),
-			SenderStats: map[string]utils.StatsInfo{
+			TransformStats: make(map[string]StatsInfo),
+			SenderStats: map[string]StatsInfo{
 				"file_sender": {
 					Errors:  se,
 					Success: ss,
@@ -121,10 +136,12 @@ func clearGotStatus(v *RunnerStatus) {
 	v.Elaspedtime = 0
 	v.ReadSpeed = 0
 	v.ReadSpeedKB = 0
-	v.ParserStats.Speed = 0
 	v.ReadSpeedTrendKb = ""
 	v.ReadSpeedTrend = ""
 	v.ReaderStats.Trend = ""
+	v.ReaderStats.Speed = 0
+
+	v.ParserStats.Speed = 0
 	v.ParserStats.Trend = ""
 	for k, t := range v.TransformStats {
 		t.Trend = ""
@@ -140,7 +157,7 @@ func clearGotStatus(v *RunnerStatus) {
 
 func mkTestDir(mkDir ...string) error {
 	for _, d := range mkDir {
-		if err := os.Mkdir(d, 0755); err != nil {
+		if err := os.Mkdir(d, DefaultDirPerm); err != nil {
 			return err
 		}
 	}
@@ -163,8 +180,9 @@ func makeRequest(url, method string, configBytes []byte) (respCode int, respBody
 	if err != nil {
 		return
 	}
-	req.Header.Set(ContentType, ApplicationJson)
-	resp, err := http.DefaultClient.Do(req)
+	req.Header.Set(ContentTypeHeader, ApplicationJson)
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return
 	}
@@ -255,9 +273,7 @@ func TestWebRest(t *testing.T) {
 	}
 	rs := NewRestService(m, echo.New())
 	time.Sleep(2 * time.Second)
-	c := make(chan string)
 	defer func() {
-		close(c)
 		rs.Stop()
 		os.RemoveAll(rootDir)
 		os.Remove(StatsShell)
@@ -273,17 +289,15 @@ func TestWebRest(t *testing.T) {
 		"getRunnersTest":          getRunnersTest,
 		"senderRouterTest":        senderRouterTest,
 	}
-
+	wg := &sync.WaitGroup{}
+	wg.Add(len(funcMap))
 	for k, f := range funcMap {
-		go func(k string, f func(*testParam), c chan string) {
+		go func(k string, f func(*testParam), group *sync.WaitGroup) {
 			f(&testParam{rootDir, t, rs})
-			c <- k
-		}(k, f, c)
+			group.Done()
+		}(k, f, wg)
 	}
-	funcCnt := len(funcMap)
-	for i := 0; i < funcCnt; i++ {
-		<-c
-	}
+	wg.Wait()
 }
 
 func Test_generateStatsShell(t *testing.T) {
@@ -342,7 +356,7 @@ func restGetStatusTest(p *testParam) {
 	}
 	rss := make(map[string]RunnerStatus)
 	var respRss respRunnerStatus
-	err = json.Unmarshal([]byte(out.String()), &respRss)
+	err = jsoniter.Unmarshal([]byte(out.String()), &respRss)
 	assert.NoError(t, err, out.String())
 	rss = respRss.Data
 	exp := getRunnerStatus(runnerName, logDir, RunnerRunning, 1, 29, 0, 1, 0, 1)
@@ -407,24 +421,23 @@ func restCRUDTest(p *testParam) {
 
 	var expconf1, got1 RunnerConfig
 	var respGot1 respRunnerConfig
-	err = json.Unmarshal([]byte(conf1), &expconf1)
+	err = jsoniter.Unmarshal([]byte(conf1), &expconf1)
 	assert.NoError(t, err)
-	expconf1.ReaderConfig[utils.GlobalKeyName] = expconf1.RunnerName
-	expconf1.ReaderConfig[reader.KeyRunnerName] = expconf1.RunnerName
-	expconf1.ParserConf[parser.KeyRunnerName] = expconf1.RunnerName
+	expconf1.ReaderConfig[GlobalKeyName] = expconf1.RunnerName
+	expconf1.ReaderConfig[KeyRunnerName] = expconf1.RunnerName
+	expconf1.ParserConf[KeyRunnerName] = expconf1.RunnerName
 	expconf1.IsInWebFolder = true
 	for i := range expconf1.SenderConfig {
-		expconf1.SenderConfig[i][sender.KeyRunnerName] = expconf1.RunnerName
+		expconf1.SenderConfig[i][KeyRunnerName] = expconf1.RunnerName
 	}
 
 	url = "http://127.0.0.1" + rs.address + "/logkit/configs/" + runnerName1
 	respCode, respBody, err = makeRequest(url, http.MethodGet, []byte{})
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
-	err = json.Unmarshal(respBody, &respGot1)
+	err = jsoniter.Unmarshal(respBody, &respGot1)
 	if err != nil {
-		fmt.Println(string(respBody))
-		t.Error(err)
+		t.Error(err, string(respBody))
 	}
 
 	// POST的和GET做验证
@@ -434,15 +447,15 @@ func restCRUDTest(p *testParam) {
 
 	var expconf2, got2 RunnerConfig
 	var respGot2 respRunnerConfig
-	err = json.Unmarshal([]byte(conf2), &expconf2)
+	err = jsoniter.Unmarshal([]byte(conf2), &expconf2)
 	assert.NoError(t, err)
 
-	expconf2.ReaderConfig[utils.GlobalKeyName] = expconf2.RunnerName
-	expconf2.ReaderConfig[reader.KeyRunnerName] = expconf2.RunnerName
-	expconf2.ParserConf[parser.KeyRunnerName] = expconf2.RunnerName
+	expconf2.ReaderConfig[GlobalKeyName] = expconf2.RunnerName
+	expconf2.ReaderConfig[KeyRunnerName] = expconf2.RunnerName
+	expconf2.ParserConf[KeyRunnerName] = expconf2.RunnerName
 	expconf2.IsInWebFolder = true
 	for i := range expconf2.SenderConfig {
-		expconf2.SenderConfig[i][sender.KeyRunnerName] = expconf2.RunnerName
+		expconf2.SenderConfig[i][KeyRunnerName] = expconf2.RunnerName
 	}
 
 	url = "http://127.0.0.1" + rs.address + "/logkit/configs/" + runnerName2
@@ -461,7 +474,7 @@ func restCRUDTest(p *testParam) {
 	respCode, respBody, err = makeRequest(url, http.MethodGet, []byte{})
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
-	err = json.Unmarshal(respBody, &respGot2)
+	err = jsoniter.Unmarshal(respBody, &respGot2)
 	assert.NoError(t, err)
 	got2 = respGot2.Data
 	got2.CreateTime = ""
@@ -473,7 +486,7 @@ func restCRUDTest(p *testParam) {
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
 	var respGotLists respRunnerConfigs
-	err = json.Unmarshal(respBody, &respGotLists)
+	err = jsoniter.Unmarshal(respBody, &respGotLists)
 	assert.NoError(t, err)
 	gotLists := make(map[string]RunnerConfig)
 	gotLists = respGotLists.Data
@@ -503,7 +516,7 @@ func restCRUDTest(p *testParam) {
 	assert.Equal(t, http.StatusOK, respCode)
 	var gotUpdate RunnerConfig
 	var respGotUpdate respRunnerConfig
-	err = json.Unmarshal(respBody, &respGotUpdate)
+	err = jsoniter.Unmarshal(respBody, &respGotUpdate)
 	assert.NoError(t, err)
 	gotUpdate = respGotUpdate.Data
 	assert.Equal(t, mode, gotUpdate.ReaderConfig["mode"])
@@ -521,7 +534,7 @@ func restCRUDTest(p *testParam) {
 	respCode, respBody, err = makeRequest(url, http.MethodGet, []byte{})
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusBadRequest, respCode)
-	err = json.Unmarshal(respBody, &respGot2)
+	err = jsoniter.Unmarshal(respBody, &respGot2)
 	assert.NoError(t, err)
 	got2 = respGot2.Data
 	got2.CreateTime = ""
@@ -532,7 +545,7 @@ func restCRUDTest(p *testParam) {
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
 	respGotLists = respRunnerConfigs{}
-	err = json.Unmarshal(respBody, &respGotLists)
+	err = jsoniter.Unmarshal(respBody, &respGotLists)
 	assert.NoError(t, err)
 	gotLists = respGotLists.Data
 	_, ex := gotLists[rs.mgr.RestDir+"/"+runnerName1+".conf"]
@@ -577,7 +590,7 @@ func runnerResetTest(p *testParam) {
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
 	respRss := respRunnerStatus{}
-	if err = json.Unmarshal(respBody, &respRss); err != nil {
+	if err = jsoniter.Unmarshal(respBody, &respRss); err != nil {
 		t.Fatalf("status unmarshal failed error is %v, respBody is %v", err, string(respBody))
 	}
 	rss := respRss.Data
@@ -597,7 +610,7 @@ func runnerResetTest(p *testParam) {
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
 	respRss = respRunnerStatus{}
-	if err = json.Unmarshal(respBody, &respRss); err != nil {
+	if err = jsoniter.Unmarshal(respBody, &respRss); err != nil {
 		t.Fatalf("status unmarshal failed error is %v, respBody is %v", err, string(respBody))
 	}
 	rss = respRss.Data
@@ -644,7 +657,7 @@ func runnerStopStartTest(p *testParam) {
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
 	respRss := respRunnerStatus{}
-	if err = json.Unmarshal(respBody, &respRss); err != nil {
+	if err = jsoniter.Unmarshal(respBody, &respRss); err != nil {
 		t.Fatalf("status unmarshal failed error is %v, respBody is %v", err, string(respBody))
 	}
 	rss := respRss.Data
@@ -665,7 +678,7 @@ func runnerStopStartTest(p *testParam) {
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
 	respRss = respRunnerStatus{}
-	if err = json.Unmarshal(respBody, &respRss); err != nil {
+	if err = jsoniter.Unmarshal(respBody, &respRss); err != nil {
 		t.Fatalf("status unmarshal failed error is %v, respBody is %v", err, string(respBody))
 	}
 	rss = respRss.Data
@@ -688,7 +701,7 @@ func runnerStopStartTest(p *testParam) {
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
 	respRss = respRunnerStatus{}
-	if err = json.Unmarshal(respBody, &respRss); err != nil {
+	if err = jsoniter.Unmarshal(respBody, &respRss); err != nil {
 		t.Fatalf("status unmarshal failed error is %v, respBody is %v", err, string(respBody))
 	}
 	rss = respRss.Data
@@ -722,7 +735,7 @@ func runnerDataIntegrityTest(p *testParam) {
 		t.Fatalf("mkdir test path error %v", err)
 	}
 	log1 := `{"a":1,"b":2}`
-	file, err := os.OpenFile(filepath.Join(logDir, "log1"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+	file, err := os.OpenFile(filepath.Join(logDir, "log1"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, DefaultFilePerm)
 	if err != nil {
 		log.Fatalf("Test_Run error createfile %v %v", filepath.Join(logDir, "log1"), err)
 	}
@@ -753,7 +766,7 @@ func runnerDataIntegrityTest(p *testParam) {
 		assert.Equal(t, http.StatusOK, respCode)
 		time.Sleep(2 * time.Second)
 
-		file, err := os.OpenFile(filepath.Join(logDir, "log1"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
+		file, err := os.OpenFile(filepath.Join(logDir, "log1"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, DefaultFilePerm)
 		if err != nil {
 			log.Fatalf("Test_Run error createfile %v %v", filepath.Join(logDir, "log1"), err)
 		}
@@ -778,7 +791,7 @@ func runnerDataIntegrityTest(p *testParam) {
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
 	respRss := respRunnerStatus{}
-	if err = json.Unmarshal(respBody, &respRss); err != nil {
+	if err = jsoniter.Unmarshal(respBody, &respRss); err != nil {
 		t.Fatalf("status unmarshal failed error is %v, respBody is %v", err, string(respBody))
 	}
 	rss := respRss.Data
@@ -796,7 +809,7 @@ func runnerDataIntegrityTest(p *testParam) {
 		if c == io.EOF {
 			break
 		}
-		err = json.Unmarshal([]byte(str), &result)
+		err = jsoniter.Unmarshal([]byte(str), &result)
 		if err != nil {
 			log.Fatalf("Test_Run error unmarshal result curLine = %v %v", curLine, err)
 		}
@@ -810,8 +823,7 @@ func runnerDataIntegrityTest(p *testParam) {
 
 func TestParseUrl(t *testing.T) {
 	host, port, err := net.SplitHostPort(":1234")
-	assert.NoError(t, err)
-	fmt.Println(host, port)
+	assert.NoError(t, err, fmt.Sprintf("%v:%v", host, port))
 }
 
 func TestGetMySlaveUrl(t *testing.T) {
@@ -830,11 +842,11 @@ func getErrorCodeTest(p *testParam) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, respCode)
 	respCodeMap := respErrorCode{}
-	err = json.Unmarshal(respBody, &respCodeMap)
+	err = jsoniter.Unmarshal(respBody, &respCodeMap)
 	assert.NoError(t, err)
 	codeMap := respCodeMap.Data
-	assert.Equal(t, len(utils.ErrorCodeHumanize), len(codeMap))
-	for key, val := range utils.ErrorCodeHumanize {
+	assert.Equal(t, len(ErrorCodeHumanize), len(codeMap))
+	for key, val := range ErrorCodeHumanize {
 		cm, ok := codeMap[key]
 		assert.Equal(t, true, ok)
 		if ok {
@@ -886,7 +898,7 @@ func getRunnersTest(p *testParam) {
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
 	var respRunner respRunnersNameList
-	err = json.Unmarshal(respBody, &respRunner)
+	err = jsoniter.Unmarshal(respBody, &respRunner)
 	assert.NoError(t, err)
 	runnerNameList := respRunner.Data
 	runnerExist := 0
@@ -909,7 +921,7 @@ func getRunnersTest(p *testParam) {
 	assert.Equal(t, http.StatusOK, respCode)
 
 	respRunner = respRunnersNameList{}
-	err = json.Unmarshal(respBody, &respRunner)
+	err = jsoniter.Unmarshal(respBody, &respRunner)
 	assert.NoError(t, err)
 	runnerNameList = respRunner.Data
 	runnerExist = 0
@@ -964,7 +976,7 @@ func senderRouterTest(p *testParam) {
 		t.Fatalf("get runner config failed, error is %v", err)
 	}
 	runnerConf := RunnerConfig{}
-	err = json.Unmarshal(runnerConfBytes, &runnerConf)
+	err = jsoniter.Unmarshal(runnerConfBytes, &runnerConf)
 	assert.NoError(t, err)
 	runnerConf.SenderConfig = []conf.MapConf{
 		conf.MapConf{
@@ -983,10 +995,10 @@ func senderRouterTest(p *testParam) {
 			"file_send_path": resvPath3,
 		},
 	}
-	runnerConf.Router = sender.RouterConfig{
+	runnerConf.Router = router.RouterConfig{
 		KeyName:      "a",
 		DefaultIndex: 2,
-		MatchType:    sender.MTypeEqualName,
+		MatchType:    router.MTypeEqualName,
 		Routes: map[string]int{
 			"a":   0,
 			"123": 0,
@@ -994,13 +1006,13 @@ func senderRouterTest(p *testParam) {
 		},
 	}
 
-	runnerConfBytes, err = json.Marshal(runnerConf)
+	runnerConfBytes, err = jsoniter.Marshal(runnerConf)
 	assert.NoError(t, err)
 	url := "http://127.0.0.1" + rs.address + "/logkit/configs/" + runnerName
 	respCode, respBody, err := makeRequest(url, http.MethodPost, runnerConfBytes)
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
-	time.Sleep(6 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	f1, err := os.Open(resvPath1)
 	assert.NoError(t, err)
@@ -1013,7 +1025,7 @@ func senderRouterTest(p *testParam) {
 		if c == io.EOF {
 			break
 		}
-		err = json.Unmarshal([]byte(str), &result)
+		err = jsoniter.Unmarshal([]byte(str), &result)
 		if err != nil {
 			log.Fatalf("TestSenderRouter error unmarshal result curLine = %v %v", dataCnt, err)
 		}
@@ -1032,7 +1044,7 @@ func senderRouterTest(p *testParam) {
 		if c == io.EOF {
 			break
 		}
-		err = json.Unmarshal([]byte(str), &result)
+		err = jsoniter.Unmarshal([]byte(str), &result)
 		if err != nil {
 			log.Fatalf("TestSenderRouter error unmarshal result curLine = %v %v", dataCnt, err)
 		}
@@ -1051,11 +1063,35 @@ func senderRouterTest(p *testParam) {
 		if c == io.EOF {
 			break
 		}
-		err = json.Unmarshal([]byte(str), &result)
+		err = jsoniter.Unmarshal([]byte(str), &result)
 		if err != nil {
 			log.Fatalf("TestSenderRouter error unmarshal result curLine = %v %v", dataCnt, err)
 		}
 		dataCnt += len(result)
 	}
 	assert.Equal(t, 4, dataCnt)
+}
+
+func TestConvertWebParserConfig(t *testing.T) {
+	cf := conf.MapConf{
+		parser.KeyCSVSplitter:        "\\t",
+		parser.KeyGrokCustomPatterns: `JUUyJTgyJUFDJTIwJUU0JUJEJUEwJUU1JUE1JUJEJTIwJUMzJUE2JUMzJUI4JUMzJUE1JUMzJTg2JUMzJTk4JUMzJTg1`,
+	}
+	newcf := parser.ConvertWebParserConfig(cf)
+	expcf := conf.MapConf{
+		parser.KeyCSVSplitter:        "\t",
+		parser.KeyGrokCustomPatterns: `€ 你好 æøåÆØÅ`,
+	}
+	assert.Equal(t, expcf, newcf)
+
+	cf = conf.MapConf{
+		parser.KeyGrokCustomPatterns: `TkVXREFUQSUyMCguKiU1Q24pJTJCJTBBTVlMT0clMjAlNUMlNUIlMjUlN0JEQVRBJTNBdGltZXN0YW1wJTNBZGF0ZSU3RCU1QyU1RCU1QyU1QiUyNSU3Qk5PVFNQQUNFJTNBdHJhbnNOdW1iZXIlM0Fsb25nJTdEJTVDJTVEJTIwTGV2ZWwlMjAlMjUlN0JOT1RTUEFDRSUzQWxldmVsJTNBbG9uZyU3RCUyMFBNVFNNU0dIREwlM0ElMjAlNUNuJUU1JTg5JThEJUU0JUI4JTgwJUU1JUIxJThBJUU3JTgyJUI5JUU1JThGJTkxJUU5JTgwJTgxJUU2JTk3JUI2JUU5JTk3JUI0JTVDJTVCJTI1JTdCREFUQSUzQXByZXRyYXNuVGltZSUzQWRhdGUlN0QlNUMlNUQlMkMlRTglQjAlODMlRTclOTQlQThEb05leHRNc2clRTYlOTclQjYlRTklOTclQjQlNUMlNUIlMjUlN0JEQVRBJTNBbmV4dFRyYW5UaW1lJTNBZGF0ZSU3RCU1QyU1RCU1Q24lRTYlOUMlQUMlRTUlOUMlQjAlRTklOTglOUYlRTUlODglOTclRTclQUUlQTElRTclOTAlODYlRTUlOTklQTglM0ElNUMlNUIlMjUlN0JOT1RTUEFDRSUzQXF1ZXVlTWFuZ2VyJTdEJTVDJTVEJTJDJUU2JTlDJUFDJUU1JTlDJUIwJUU5JTk4JTlGJUU1JTg4JTk3JTNBJTVDJTVCJTI1JTdCTk9UU1BBQ0UlM0Fsb2NhbFF1ZXVlJTdEJTVDJTVEJTVDbiVFOSVBNiU5NiVFNSU4NSU4OCVFNSU4RiU5MSVFOSU4MCU4MSVFOSU5OCU5RiVFNSU4OCU5NyVFNSU5MCU4RCUzQSU1QyU1QiUyNSU3Qk5PVFNQQUNFJTNBZmlyc3RRdWV1ZU5hbWUlN0QlNUMlNUQlMkMlRTUlQTQlODclRTYlQjMlQTglM0ElNUMlNUIlMjUlN0JEQVRBJTNBbm90ZSU3RCU1QyU1RCU1Q25VJUU1JUE0JUI0JUU0JUJGJUExJUU2JTgxJUFGJTNBJTVDJTVCJTI1JTdCREFUQSUzQXVoZWFkZXIlN0QlNUMlNUQlNUNuJUU2JThBJUE1JUU2JTk2JTg3JUU1JTg2JTg1JUU1JUFFJUI5JTNBJTVDbiU3QkglM0ElMjUlN0JOT1RTUEFDRSUzQWhjb2RlJTdEJTVDdCUyQiUyNSU3Qk5PVFNQQUNFJTNBaGNvZGUyJTdEJTVDdCUyQiUyNSU3Qk5PVFNQQUNFJTNBaGNvZGUzJTdEJTVDdCUyQiUyNSU3Qk5PVFNQQUNFJTNBaGNvZGU0JTdEJTVDdCUyQiU3RCU1Q24oJTdCUyUzQSUyNSU3QkRBVEElM0FzZGF0YSU3RCU3RCU1Q24pJTNGJTI1JTdCTkVXREFUQSUzQXhtbCU3RCU1Q24lNUNuJTVDbg==`,
+	}
+	newcf = parser.ConvertWebParserConfig(cf)
+	expcf = conf.MapConf{
+		parser.KeyGrokCustomPatterns: `NEWDATA (.*\n)+
+MYLOG \[%{DATA:timestamp:date}\]\[%{NOTSPACE:transNumber:long}\] Level %{NOTSPACE:level:long} PMTSMSGHDL: \n前一届点发送时间\[%{DATA:pretrasnTime:date}\],调用DoNextMsg时间\[%{DATA:nextTranTime:date}\]\n本地队列管理器:\[%{NOTSPACE:queueManger}\],本地队列:\[%{NOTSPACE:localQueue}\]\n首先发送队列名:\[%{NOTSPACE:firstQueueName}\],备注:\[%{DATA:note}\]\nU头信息:\[%{DATA:uheader}\]\n报文内容:\n{H:%{NOTSPACE:hcode}\t+%{NOTSPACE:hcode2}\t+%{NOTSPACE:hcode3}\t+%{NOTSPACE:hcode4}\t+}\n({S:%{DATA:sdata}}\n)?%{NEWDATA:xml}\n\n\n`,
+	}
+	assert.Equal(t, expcf, newcf)
+
 }

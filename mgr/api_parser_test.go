@@ -1,12 +1,13 @@
 package mgr
 
 import (
-	"encoding/json"
 	"net/http"
 
 	conf2 "github.com/qiniu/logkit/conf"
 	"github.com/qiniu/logkit/parser"
-	"github.com/qiniu/logkit/sender"
+	. "github.com/qiniu/logkit/utils/models"
+
+	"github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,7 +25,7 @@ func parserParseTest(p *testParam) {
 	rawConf := conf2.MapConf{}
 	rawConf[KeySampleLog] = parser.SampleLogs[parser.TypeRaw]
 	rawConf[parser.KeyParserType] = parser.TypeRaw
-	rawpst, err := json.Marshal(rawConf)
+	rawpst, err := jsoniter.Marshal(rawConf)
 	assert.NoError(t, err)
 	url := "http://127.0.0.1" + rs.address + "/logkit/parser/parse"
 	respCode, respBody, err := makeRequest(url, http.MethodPost, rawpst)
@@ -32,26 +33,26 @@ func parserParseTest(p *testParam) {
 	assert.Equal(t, http.StatusOK, respCode)
 
 	var got1 respParserRet
-	err = json.Unmarshal(respBody, &got1)
+	err = jsoniter.Unmarshal(respBody, &got1)
 	assert.NoError(t, err, string(respBody))
-	assert.Equal(t, 4, len(got1.Data.SamplePoints))
+	assert.Equal(t, 1, len(got1.Data.SamplePoints))
 
 	// json
 	var got2 respParserRet
 	jsonConf := conf2.MapConf{}
 	jsonConf[KeySampleLog] = parser.SampleLogs[parser.TypeJson]
 	jsonConf[parser.KeyParserType] = parser.TypeJson
-	rawpst, err = json.Marshal(jsonConf)
+	rawpst, err = jsoniter.Marshal(jsonConf)
 	assert.NoError(t, err)
 	url = "http://127.0.0.1" + rs.address + "/logkit/parser/parse"
 	respCode, respBody, err = makeRequest(url, http.MethodPost, rawpst)
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
-	err = json.Unmarshal(respBody, &got2)
+	err = jsoniter.Unmarshal(respBody, &got2)
 	if err != nil {
 		t.Error(err)
 	}
-	exp2 := sender.Data{
+	exp2 := Data{
 		"a": "b",
 		"c": 1.0,
 		"d": 1.1,
@@ -64,18 +65,18 @@ func parserParseTest(p *testParam) {
 	grokConf[KeySampleLog] = parser.SampleLogs[parser.TypeGrok]
 	grokConf[parser.KeyParserType] = parser.TypeGrok
 	grokConf[parser.KeyGrokPatterns] = "%{COMMON_LOG_FORMAT}"
-	rawpst, err = json.Marshal(grokConf)
+	rawpst, err = jsoniter.Marshal(grokConf)
 	assert.NoError(t, err)
 	url = "http://127.0.0.1" + rs.address + "/logkit/parser/parse"
 	respCode, respBody, err = makeRequest(url, http.MethodPost, rawpst)
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
-	err = json.Unmarshal(respBody, &got3)
+	err = jsoniter.Unmarshal(respBody, &got3)
 	if err != nil {
 		t.Error(err)
 	}
 
-	exp3 := sender.Data{
+	exp3 := Data{
 		"ts":           "2000-10-10T13:55:36-07:00",
 		"verb":         "GET",
 		"http_version": 1.0,
@@ -97,7 +98,7 @@ func parserAPITest(p *testParam) {
 	respCode, respBody, err := makeRequest(url, http.MethodGet, []byte{})
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
-	if err = json.Unmarshal(respBody, &got1); err != nil {
+	if err = jsoniter.Unmarshal(respBody, &got1); err != nil {
 		t.Fatalf("respBody %v unmarshal failed, error is %v", respBody, err)
 	}
 	assert.Equal(t, parser.ModeUsages, got1.Data)
@@ -107,7 +108,7 @@ func parserAPITest(p *testParam) {
 	respCode, respBody, err = makeRequest(url, http.MethodGet, []byte{})
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
-	if err = json.Unmarshal(respBody, &got2); err != nil {
+	if err = jsoniter.Unmarshal(respBody, &got2); err != nil {
 		t.Fatalf("respBody %v unmarshal failed, error is %v", respBody, err)
 	}
 	assert.Equal(t, parser.ModeKeyOptions, got2.Data)
@@ -117,7 +118,7 @@ func parserAPITest(p *testParam) {
 	respCode, respBody, err = makeRequest(url, http.MethodGet, []byte{})
 	assert.NoError(t, err, string(respBody))
 	assert.Equal(t, http.StatusOK, respCode)
-	if err = json.Unmarshal(respBody, &got3); err != nil {
+	if err = jsoniter.Unmarshal(respBody, &got3); err != nil {
 		t.Fatalf("respBody %v unmarshal failed, error is %v", respBody, err)
 	}
 	assert.Equal(t, parser.SampleLogs, got3.Data)

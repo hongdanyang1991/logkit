@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/qiniu/logkit/sender"
 	"github.com/qiniu/logkit/transforms"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
 )
 
 type Replacer struct {
@@ -15,7 +14,7 @@ type Replacer struct {
 	Old       string `json:"old"`
 	New       string `json:"new"`
 	Regex     bool   `json:"regex"`
-	stats     utils.StatsInfo
+	stats     StatsInfo
 	Regexp    *regexp.Regexp
 }
 
@@ -32,12 +31,12 @@ func (g *Replacer) Init() error {
 	return nil
 }
 
-func (g *Replacer) Transform(datas []sender.Data) ([]sender.Data, error) {
+func (g *Replacer) Transform(datas []Data) ([]Data, error) {
 	var err, ferr error
 	errnums := 0
-	keys := utils.GetKeys(g.Key)
+	keys := GetKeys(g.Key)
 	for i := range datas {
-		val, gerr := utils.GetMapValue(datas[i], keys...)
+		val, gerr := GetMapValue(datas[i], keys...)
 		if gerr != nil {
 			errnums++
 			err = fmt.Errorf("transform key %v not exist in data", g.Key)
@@ -49,7 +48,7 @@ func (g *Replacer) Transform(datas []sender.Data) ([]sender.Data, error) {
 			err = fmt.Errorf("transform key %v data type is not string", g.Key)
 			continue
 		}
-		utils.SetMapValue(datas[i], g.Regexp.ReplaceAllString(strval, g.New), false, keys...)
+		SetMapValue(datas[i], g.Regexp.ReplaceAllString(strval, g.New), false, keys...)
 	}
 
 	if err != nil {
@@ -70,7 +69,8 @@ func (g *Replacer) RawTransform(datas []string) ([]string, error) {
 }
 
 func (g *Replacer) Description() string {
-	return "replace old string to new"
+	//return "replace old string to new"
+	return "用新字符串替换旧字符串"
 }
 
 func (g *Replacer) Type() string {
@@ -83,18 +83,21 @@ func (g *Replacer) SampleConfig() string {
 		"stage":"before_parser",
 		"key":"MyReplaceFieldKey",
 		"old":"myOldString",
-		"new":"myNewString"
+		"new":"myNewString",
+        "regex":"false"
 	}`
 }
 
-func (g *Replacer) ConfigOptions() []utils.Option {
-	return []utils.Option{
+func (g *Replacer) ConfigOptions() []Option {
+	return []Option{
 		transforms.KeyStage,
 		transforms.KeyFieldName,
 		{
 			KeyName:      "old",
 			ChooseOnly:   false,
-			Default:      "myOldString",
+			Default:      "",
+			Required:     true,
+			Placeholder:  "myOldString",
 			DefaultNoUse: true,
 			Description:  "要替换的字符串内容(old)",
 			Type:         transforms.TransformTypeString,
@@ -102,7 +105,9 @@ func (g *Replacer) ConfigOptions() []utils.Option {
 		{
 			KeyName:      "new",
 			ChooseOnly:   false,
-			Default:      "myNewString",
+			Default:      "",
+			Required:     false,
+			Placeholder:  "myNewString",
 			DefaultNoUse: true,
 			Description:  "替换为的字符串内容(new)",
 			Type:         transforms.TransformTypeString,
@@ -110,10 +115,11 @@ func (g *Replacer) ConfigOptions() []utils.Option {
 		{
 			KeyName:       "regex",
 			ChooseOnly:    true,
-			ChooseOptions: []interface{}{"false", "true"},
-			Default:       "false",
+			ChooseOptions: []interface{}{false, true},
+			Default:       false,
 			DefaultNoUse:  false,
-			Description:   "是否启用正则匹配",
+			Description:   "是否启用正则匹配(regex)",
+			Type:          transforms.TransformTypeBoolean,
 		},
 	}
 }
@@ -125,7 +131,7 @@ func (g *Replacer) Stage() string {
 	return g.StageTime
 }
 
-func (g *Replacer) Stats() utils.StatsInfo {
+func (g *Replacer) Stats() StatsInfo {
 	return g.stats
 }
 

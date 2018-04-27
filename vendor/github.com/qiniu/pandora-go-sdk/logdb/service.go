@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"crypto/tls"
+
 	"github.com/qiniu/pandora-go-sdk/base"
 	"github.com/qiniu/pandora-go-sdk/base/config"
 	"github.com/qiniu/pandora-go-sdk/base/request"
@@ -44,6 +46,10 @@ func NewClient(c *config.Config) (p *Logdb, err error) {
 			KeepAlive: 30 * time.Second,
 		}).Dial,
 		ResponseHeaderTimeout: c.ResponseTimeout,
+		TLSClientConfig:       &tls.Config{},
+	}
+	if c.AllowInsecureServer {
+		t.TLSClientConfig.InsecureSkipVerify = true
 	}
 
 	p = &Logdb{
@@ -60,7 +66,7 @@ func (c *Logdb) newRequest(op *request.Operation, token string, v interface{}) *
 	return req
 }
 
-func (c *Logdb) newOperation(opName string, args ...interface{}) *request.Operation {
+func (c *Logdb) NewOperation(opName string, args ...interface{}) *request.Operation {
 	var method, urlTmpl string
 	switch opName {
 	case base.OpCreateRepo:

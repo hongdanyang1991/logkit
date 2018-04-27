@@ -5,12 +5,8 @@ import (
 	"fmt"
 
 	"github.com/qiniu/logkit/conf"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
 )
-
-// Data store as use key/value map
-// e.g sum -> 1.2, url -> qiniu.com
-type Data map[string]interface{}
 
 // NotAsyncSender return when sender is not async
 var ErrNotAsyncSender = errors.New("This Sender does not support for Async Push")
@@ -28,45 +24,17 @@ type StatsSender interface {
 	// send data, error if failed
 	Send([]Data) error
 	Close() error
-	Stats() utils.StatsInfo
+	Stats() StatsInfo
 	// 恢复 sender 停止之前的状态
-	Restore(*utils.StatsInfo)
+	Restore(*StatsInfo)
 }
 
-// Sender's conf keys
-const (
-	KeySenderType     = "sender_type"
-	KeyFaultTolerant  = "fault_tolerant"
-	KeyName           = "name"
-	KeyRunnerName     = "runner_name"
-	KeyLogkitSendTime = "logkit_send_time"
-	KeyIsMetrics      = "is_metrics"
-	KeyMetricTime     = "timestamp"
-)
-
-const UnderfinedRunnerName = "UnderfinedRunnerName"
-
-// SenderType 发送类型
-const (
-	TypeFile              = "file"          // 本地文件
-	TypePandora           = "pandora"       // pandora 打点
-	TypeMongodbAccumulate = "mongodb_acc"   // mongodb 并且按字段聚合
-	TypeInfluxdb          = "influxdb"      // influxdb
-	TypeMock              = "mock"          // mock sender
-	TypeDiscard           = "discard"       // discard sender
-	TypeElastic           = "elasticsearch" // elastic
-	TypeKafka             = "kafka"         // kafka
-)
-
-const (
-	InnerUserAgent = "_useragent"
-)
+type TokenRefreshable interface {
+	TokenRefresh(conf.MapConf) error
+}
 
 // Ft sender默认同步一次meta信息的数据次数
 const DefaultFtSyncEvery = 10
-
-//向所有数据中添加agentHostName字段,如果已存在,则不做任何操作
-const KeyHostName = "host"
 
 // SenderRegistry sender 的工厂类。可以注册自定义sender
 type SenderRegistry struct {
@@ -85,6 +53,7 @@ func NewSenderRegistry() *SenderRegistry {
 	ret.RegisterSender(TypeMock, NewMockSender)
 	ret.RegisterSender(TypeDiscard, NewDiscardSender)
 	ret.RegisterSender(TypeKafka, NewKafkaSender)
+	ret.RegisterSender(TypeHttp, NewHttpSender)
 	return ret
 }
 

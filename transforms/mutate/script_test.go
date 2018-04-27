@@ -1,7 +1,7 @@
 package mutate
 
 import (
-	"github.com/qiniu/logkit/sender"
+	. "github.com/qiniu/logkit/utils/models"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -44,7 +44,7 @@ func TestScriptTransformer(t *testing.T) {
 	g2.Init()
 	datas2, err2 := g2.Transform(getTestData())
 	assert.NoError(t, err2)
-	assert.Equal(t, []sender.Data{
+	assert.Equal(t, []Data{
 		map[string]interface{}{
 			"logLevel": "warn",
 			"method":   "POST",
@@ -77,7 +77,7 @@ func TestScriptTransformer(t *testing.T) {
 	g3.Init()
 	datas3, err3 := g3.Transform(getTestData())
 	assert.NoError(t, err3)
-	assert.Equal(t, []sender.Data{
+	assert.Equal(t, []Data{
 		map[string]interface{}{
 			"logLevel": "warn",
 			"method":   "POST",
@@ -111,7 +111,7 @@ func TestScriptTransformer(t *testing.T) {
 	g4.Init()
 	datas4, err4 := g4.Transform(getTestData())
 	assert.NoError(t, err4)
-	assert.Equal(t, []sender.Data{
+	assert.Equal(t, []Data{
 		map[string]interface{}{
 			"logLevel": "warn",
 			"method":   "delete",
@@ -130,7 +130,7 @@ func TestScriptTransformer(t *testing.T) {
 	g5.Init()
 	datas5, err5 := g5.Transform(getTestData())
 	assert.NoError(t, err5)
-	assert.Equal(t, datas5, []sender.Data{
+	assert.Equal(t, datas5, []Data{
 		map[string]interface{}{
 			"method": "POST",
 		},
@@ -152,8 +152,8 @@ func TestScriptTransformer(t *testing.T) {
 
 }
 
-func getTestData() []sender.Data {
-	testData := []sender.Data{
+func getTestData() []Data {
+	testData := []Data{
 		map[string]interface{}{
 			"logLevel": "w",
 			"method":   "POST",

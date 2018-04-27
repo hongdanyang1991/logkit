@@ -5,23 +5,22 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/qiniu/logkit/sender"
 	"github.com/qiniu/logkit/transforms"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
 )
 
 type Spliter struct {
 	Key         string `json:"key"`
 	SeperateKey string `json:"sep"`
 	ArraryName  string `json:"newfield"`
-	stats       utils.StatsInfo
+	stats       StatsInfo
 }
 
 func (g *Spliter) RawTransform(datas []string) ([]string, error) {
 	return datas, errors.New("split transformer not support rawTransform")
 }
 
-func (g *Spliter) Transform(datas []sender.Data) ([]sender.Data, error) {
+func (g *Spliter) Transform(datas []Data) ([]Data, error) {
 	var err, ferr error
 	errnums := 0
 	if g.ArraryName == "" {
@@ -29,11 +28,11 @@ func (g *Spliter) Transform(datas []sender.Data) ([]sender.Data, error) {
 		g.stats.LastError = ferr.Error()
 		errnums = len(datas)
 	} else {
-		keys := utils.GetKeys(g.Key)
+		keys := GetKeys(g.Key)
 		newkeys := make([]string, len(keys))
 		for i := range datas {
 			copy(newkeys, keys)
-			val, gerr := utils.GetMapValue(datas[i], newkeys...)
+			val, gerr := GetMapValue(datas[i], newkeys...)
 			if gerr != nil {
 				errnums++
 				err = fmt.Errorf("transform key %v not exist in data", g.Key)
@@ -46,7 +45,7 @@ func (g *Spliter) Transform(datas []sender.Data) ([]sender.Data, error) {
 				continue
 			}
 			newkeys[len(newkeys)-1] = g.ArraryName
-			utils.SetMapValue(datas[i], strings.Split(strval, g.SeperateKey), false, newkeys...)
+			SetMapValue(datas[i], strings.Split(strval, g.SeperateKey), false, newkeys...)
 		}
 	}
 	if err != nil {
@@ -59,7 +58,8 @@ func (g *Spliter) Transform(datas []sender.Data) ([]sender.Data, error) {
 }
 
 func (g *Spliter) Description() string {
-	return "split one field into array from data"
+	//return "split one field into array from data"
+	return `将指定的字段切割成数组, 例如 "a,b,c" 切割为 ["a","b","c"]`
 }
 
 func (g *Spliter) Type() string {
@@ -75,24 +75,27 @@ func (g *Spliter) SampleConfig() string {
 	}`
 }
 
-func (g *Spliter) ConfigOptions() []utils.Option {
-	return []utils.Option{
-		transforms.KeyStageAfterOnly,
+func (g *Spliter) ConfigOptions() []Option {
+	return []Option{
 		transforms.KeyFieldName,
 		{
 			KeyName:      "newfield",
 			ChooseOnly:   false,
-			Default:      "newfieldname",
-			DefaultNoUse: true,
-			Description:  "split后生成的array字段名称(newfield)",
+			Default:      "",
+			Required:     true,
+			Placeholder:  "new_field_keyname",
+			DefaultNoUse: false,
+			Description:  "解析后数据的字段名(newfield)",
 			Type:         transforms.TransformTypeString,
 		},
 		{
 			KeyName:      "sep",
 			ChooseOnly:   false,
-			Default:      " ",
+			Default:      "",
+			Placeholder:  ",",
+			Required:     true,
 			DefaultNoUse: true,
-			Description:  "split的分隔符(sep)",
+			Description:  "分隔符(sep)",
 			Type:         transforms.TransformTypeString,
 		},
 	}
@@ -102,7 +105,7 @@ func (g *Spliter) Stage() string {
 	return transforms.StageAfterParser
 }
 
-func (g *Spliter) Stats() utils.StatsInfo {
+func (g *Spliter) Stats() StatsInfo {
 	return g.stats
 }
 

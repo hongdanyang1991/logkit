@@ -9,12 +9,9 @@ import (
 	"strings"
 
 	"github.com/qiniu/pandora-go-sdk/base"
+	. "github.com/qiniu/pandora-go-sdk/base/models"
 	"github.com/qiniu/pandora-go-sdk/base/reqerr"
 )
-
-type LogdbToken struct {
-	Token string `json:"-"`
-}
 
 const (
 	schemaKeyPattern = "^[a-zA-Z_][a-zA-Z0-9_]{0,127}$"
@@ -63,7 +60,7 @@ var schemaTypes = map[string]bool{
 	TypeGeoPoint: true,
 	TypeObject:   true}
 
-var analyzers = map[string]bool{
+var Analyzers = map[string]bool{
 	StandardAnalyzer:   true,
 	SimpleAnalyzer:     true,
 	WhitespaceAnalyzer: true,
@@ -80,10 +77,10 @@ var analyzers = map[string]bool{
 func validateRepoName(r string) error {
 	matched, err := regexp.MatchString(repoNamePattern, r)
 	if err != nil {
-		return reqerr.NewInvalidArgs("RepoName", err.Error())
+		return reqerr.NewInvalidArgs("RepoName", err.Error()).WithComponent("tsdb")
 	}
 	if !matched {
-		return reqerr.NewInvalidArgs("RepoName", fmt.Sprintf("invalid repo name: %s", r))
+		return reqerr.NewInvalidArgs("RepoName", fmt.Sprintf("invalid repo name: %s", r)).WithComponent("tsdb")
 	}
 	return nil
 }
@@ -120,7 +117,7 @@ func (e *RepoSchemaEntry) Validate() (err error) {
 			if e.ValueType != "string" {
 				return reqerr.NewInvalidArgs("Schema", fmt.Sprintf("only string valueType support searchWay, but now is %v", e.ValueType))
 			}
-			if !analyzers[e.Analyzer] {
+			if !Analyzers[e.Analyzer] {
 				return reqerr.NewInvalidArgs("Schema", fmt.Sprintf("invalid Analyzer type: %s", e.SearchWay))
 			}
 		}
@@ -130,7 +127,7 @@ func (e *RepoSchemaEntry) Validate() (err error) {
 }
 
 type CreateRepoDSLInput struct {
-	LogdbToken
+	PandoraToken
 	RepoName  string
 	Region    string `json:"region"`
 	Retention string `json:"retention"`
@@ -197,7 +194,7 @@ func getField(f string) (key, valueType, analyzer string, primary bool, err erro
 		return
 	}
 	if analyzer != "" {
-		if _, ok := analyzers[analyzer]; !ok {
+		if _, ok := Analyzers[analyzer]; !ok {
 			err = fmt.Errorf("field schema %v key define uknown analyzer %v", f, analyzer)
 			return
 		}
@@ -389,13 +386,28 @@ func getFormatDSL(schemas []RepoSchemaEntry, depth int, indent string) (dsl stri
 	return
 }
 
+//FullText 用于创建和指定全文索引
+type FullText struct {
+	Enabled  bool   `json:"enabled"`
+	Analyzer string `json:"analyzer"`
+}
+
+//NewFullText  增加全文索引的选项
+func NewFullText(analyzer string) FullText {
+	return FullText{
+		true,
+		analyzer,
+	}
+}
+
 type CreateRepoInput struct {
-	LogdbToken
+	PandoraToken
 	RepoName     string
 	Region       string            `json:"region"`
 	Retention    string            `json:"retention"`
 	Schema       []RepoSchemaEntry `json:"schema"`
 	PrimaryField string            `json:"primaryField"`
+	FullText     FullText          `json:"fullText"`
 }
 
 func (r *CreateRepoInput) Validate() (err error) {
@@ -438,7 +450,7 @@ func checkRetention(retention string) error {
 }
 
 type UpdateRepoInput struct {
-	LogdbToken
+	PandoraToken
 	RepoName  string
 	Retention string            `json:"retention"`
 	Schema    []RepoSchemaEntry `json:"schema"`
@@ -461,7 +473,7 @@ func (r *UpdateRepoInput) Validate() (err error) {
 }
 
 type GetRepoInput struct {
-	LogdbToken
+	PandoraToken
 	RepoName string
 }
 
@@ -472,19 +484,21 @@ type GetRepoOutput struct {
 	PrimaryField string            `json:"primaryField"`
 	CreateTime   string            `json:"createTime"`
 	UpdateTime   string            `json:"updateTime"`
+	FullText     FullText          `json:"fullText"`
 }
 
 type RepoDesc struct {
-	RepoName     string `json:"name"`
-	Region       string `json:"region"`
-	PrimaryField string `json:"primaryField"`
-	Retention    string `json:"retention"`
-	CreateTime   string `json:"createTime"`
-	UpdateTime   string `json:"updateTime"`
+	RepoName     string   `json:"name"`
+	Region       string   `json:"region"`
+	PrimaryField string   `json:"primaryField"`
+	Retention    string   `json:"retention"`
+	CreateTime   string   `json:"createTime"`
+	UpdateTime   string   `json:"updateTime"`
+	FullText     FullText `json:"fullText"`
 }
 
 type ListReposInput struct {
-	LogdbToken
+	PandoraToken
 }
 
 type ListReposOutput struct {
@@ -492,7 +506,7 @@ type ListReposOutput struct {
 }
 
 type DeleteRepoInput struct {
-	LogdbToken
+	PandoraToken
 	RepoName string
 }
 
@@ -509,7 +523,7 @@ func (ls Logs) Buf() (buf []byte, err error) {
 }
 
 type SendLogInput struct {
-	LogdbToken
+	PandoraToken
 	RepoName       string `json:"-"`
 	OmitInvalidLog bool   `json:"-"`
 	Logs           Logs
@@ -522,7 +536,7 @@ type SendLogOutput struct {
 }
 
 type SchemaRefInput struct {
-	LogdbToken
+	PandoraToken
 	SampleData map[string]interface{} `json:"sample_data"`
 }
 
@@ -549,7 +563,7 @@ func (h *Highlight) Validate() error {
 }
 
 type QueryLogInput struct {
-	LogdbToken
+	PandoraToken
 	RepoName  string
 	Query     string
 	Sort      string
@@ -560,7 +574,7 @@ type QueryLogInput struct {
 }
 
 type QueryScrollInput struct {
-	LogdbToken
+	PandoraToken
 	RepoName string `json:"-"`
 	ScrollId string `json:"scroll_id"`
 	Scroll   string `json:"scroll"`
@@ -582,7 +596,7 @@ type QueryLogOutput struct {
 }
 
 type QueryHistogramLogInput struct {
-	LogdbToken
+	PandoraToken
 	RepoName string
 	Query    string
 	Field    string
@@ -602,7 +616,7 @@ type QueryHistogramLogOutput struct {
 }
 
 type PutRepoConfigInput struct {
-	LogdbToken
+	PandoraToken
 	RepoName      string
 	TimeFieldName string `json:"timeFieldName"`
 }
@@ -612,7 +626,7 @@ func (r *PutRepoConfigInput) Validate() (err error) {
 }
 
 type GetRepoConfigInput struct {
-	LogdbToken
+	PandoraToken
 	RepoName string
 }
 
@@ -621,7 +635,7 @@ type GetRepoConfigOutput struct {
 }
 
 type PartialQueryInput struct {
-	LogdbToken
+	PandoraToken
 	RepoName  string `json:"-"`
 	StartTime int64  `json:"startTime"`
 	EndTime   int64  `json:"endTime"`

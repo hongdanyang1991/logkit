@@ -1,16 +1,15 @@
 package reader
 
 import (
+	"fmt"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/qiniu/logkit/conf"
+	. "github.com/qiniu/logkit/utils/models"
 
-	"fmt"
-	"reflect"
-
-	"github.com/qiniu/logkit/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -149,11 +148,11 @@ func TestSQLReader(t *testing.T) {
 
 	// 测试meta备份和恢复
 	mr.SyncMeta()
-	gotoffsets, gotsqls, omit := restoreMeta(meta, mr.rawsqls)
+	gotoffsets, gotsqls, omit := restoreMeta(meta, mr.rawsqls, 0)
 	assert.EqualValues(t, mr.offsets, gotoffsets, "got offsets error")
 	assert.EqualValues(t, mr.syncSQLs, gotsqls, "got sqls error")
 	assert.EqualValues(t, false, omit)
-	assert.EqualValues(t, "MYSQL_Reader:"+mr.database+"_"+hash(mr.rawsqls), mr.Name())
+	assert.EqualValues(t, "MYSQL_Reader:"+mr.database+"_"+Hash(mr.rawsqls), mr.Name())
 
 	// 测试更新Offset
 	expoffsets := []int64{123, 0, 0}
@@ -171,7 +170,7 @@ func TestSQLReader(t *testing.T) {
 	assert.NoError(t, err)
 	assert.EqualValues(t, testsqls[0]+" LIMIT 123,223;", gotSQL)
 
-	assert.Equal(t, utils.StatsInfo{}, mr.Status())
+	assert.Equal(t, StatsInfo{}, mr.Status())
 }
 
 func TestUpdateSql(t *testing.T) {

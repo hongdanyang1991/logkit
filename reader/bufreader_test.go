@@ -6,23 +6,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qiniu/logkit/conf"
-
 	"github.com/qiniu/log"
-	"github.com/qiniu/logkit/utils"
+	"github.com/qiniu/logkit/conf"
+	. "github.com/qiniu/logkit/utils/models"
+
 	"github.com/stretchr/testify/assert"
 )
 
 var lines = "123456789\n123456789\n123456789\n123456789\n"
 
 func createSeqFile(interval int, lines string) {
-	err := os.Mkdir(dir, 0755)
+	err := os.Mkdir(dir, DefaultDirPerm)
 	if err != nil {
 		log.Error(err)
 		return
 	}
 	for _, f := range files {
-		file, err := os.OpenFile(filepath.Join(dir, f), os.O_CREATE|os.O_WRONLY, defaultFilePerm)
+		file, err := os.OpenFile(filepath.Join(dir, f), os.O_CREATE|os.O_WRONLY, DefaultFilePerm)
 		if err != nil {
 			log.Error(err)
 			return
@@ -51,8 +51,7 @@ func Test_BuffReader(t *testing.T) {
 		"reader_buf_size": "24",
 		"read_from":       "oldest",
 	}
-	isFromWeb := false
-	r, err := NewFileBufReader(c, isFromWeb)
+	r, err := NewFileBufReader(c, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -65,9 +64,58 @@ func Test_BuffReader(t *testing.T) {
 			break
 		}
 	}
-	if len(rest) != 12 {
-		t.Errorf("rest should be 12, but got %v", len(rest))
+	if len(rest) != 4 {
+		t.Errorf("rest should be 4, but got %v", len(rest))
 	}
+	r.Close()
+}
+
+func Test_Datasource(t *testing.T) {
+	testdir := "Test_Datasource1"
+	err := os.Mkdir(testdir, DefaultDirPerm)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	defer os.RemoveAll(testdir)
+
+	for _, f := range []string{"f1", "f2", "f3"} {
+		file, err := os.OpenFile(filepath.Join(testdir, f), os.O_CREATE|os.O_WRONLY, DefaultFilePerm)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		file.WriteString("1234567890\nabc123\n")
+		file.Close()
+	}
+	c := conf.MapConf{
+		"log_path":        testdir,
+		"mode":            DirMode,
+		"sync_every":      "1",
+		"ignore_hidden":   "true",
+		"reader_buf_size": "18",
+		"read_from":       "oldest",
+	}
+	r, err := NewFileBufReader(c, false)
+	if err != nil {
+		t.Error(err)
+	}
+	var rest []string
+	var datasources []string
+	for {
+		line, err := r.ReadLine()
+		if err == nil {
+			rest = append(rest, line)
+		} else {
+			break
+		}
+		datasources = append(datasources, filepath.Base(r.Source()))
+	}
+	if len(rest) != 6 {
+		t.Errorf("rest should be 6, but got %v", len(rest))
+	}
+	assert.Equal(t, []string{"f1", "f1", "f2", "f2", "f3", "f3"}, datasources)
 	r.Close()
 }
 
@@ -83,8 +131,7 @@ func Test_BuffReaderBufSizeLarge(t *testing.T) {
 		"reader_buf_size": "1024",
 		"read_from":       "oldest",
 	}
-	isFromWeb := false
-	r, err := NewFileBufReader(c, isFromWeb)
+	r, err := NewFileBufReader(c, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -97,8 +144,8 @@ func Test_BuffReaderBufSizeLarge(t *testing.T) {
 			break
 		}
 	}
-	if len(rest) != 12 {
-		t.Errorf("rest should be 12, but got %v", len(rest))
+	if len(rest) != 4 {
+		t.Errorf("rest should be 4, but got %v", len(rest))
 	}
 	r.Close()
 }
@@ -118,8 +165,7 @@ func Test_GBKEncoding(t *testing.T) {
 		"read_from":       "oldest",
 		"encoding":        "gb18030",
 	}
-	isFromWeb := false
-	r, err := NewFileBufReader(c, isFromWeb)
+	r, err := NewFileBufReader(c, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -153,8 +199,7 @@ func Test_NoPanicEncoding(t *testing.T) {
 		"read_from":       "oldest",
 		"encoding":        "nopanic",
 	}
-	isFromWeb := false
-	r, err := NewFileBufReader(c, isFromWeb)
+	r, err := NewFileBufReader(c, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -187,8 +232,7 @@ func Test_BuffReaderMultiLine(t *testing.T) {
 		"read_from":       "oldest",
 		"head_pattern":    "^test*",
 	}
-	isFromWeb := false
-	r, err := NewFileBufReader(c, isFromWeb)
+	r, err := NewFileBufReader(c, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -200,14 +244,14 @@ func Test_BuffReaderMultiLine(t *testing.T) {
 		num++
 
 		r.SyncMeta()
-		if num > 3 {
+		if num >= 3 {
 			break
 		}
 		r.SyncMeta()
-		assert.NoError(t, err)
+		//assert.NoError(t, err)
 	}
 	r.Close()
-	r, err = NewFileBufReader(c, isFromWeb)
+	r, err = NewFileBufReader(c, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -241,8 +285,7 @@ func Test_BuffReaderStats(t *testing.T) {
 		"mode":      DirMode,
 		"read_from": "oldest",
 	}
-	isFromWeb := false
-	r, err := NewFileBufReader(c, isFromWeb)
+	r, err := NewFileBufReader(c, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -251,7 +294,7 @@ func Test_BuffReaderStats(t *testing.T) {
 	str, ok := r.(StatsReader)
 	assert.Equal(t, true, ok)
 	stsx := str.Status()
-	expsts := utils.StatsInfo{}
+	expsts := StatsInfo{}
 	assert.Equal(t, expsts, stsx)
 	r.Close()
 }
@@ -268,12 +311,11 @@ func Test_FileNotFound(t *testing.T) {
 		"reader_buf_size": "24",
 		"read_from":       "oldest",
 	}
-	isFromWeb := true
-	r, err := NewFileBufReader(c, isFromWeb)
+	r, err := NewFileBufReader(c, true)
 	assert.Error(t, err)
 
 	c["log_path"] = filepath.Join(dir, files[0])
-	r, err = NewFileBufReader(c, isFromWeb)
+	r, err = NewFileBufReader(c, true)
 	assert.NoError(t, err)
 	rest := []string{}
 	for {
@@ -288,4 +330,65 @@ func Test_FileNotFound(t *testing.T) {
 		t.Errorf("rest should be 4, but got %v", len(rest))
 	}
 	r.Close()
+}
+
+type MockReader struct {
+	num int
+}
+
+func (m *MockReader) Name() string {
+	return "mock"
+}
+func (m *MockReader) Source() string {
+	return "mock"
+}
+
+func (m *MockReader) Read(p []byte) (n int, err error) {
+	if m.num%1000 == 0 {
+		for i, v := range "abchaha\n" {
+			p[i] = byte(v)
+		}
+		m.num++
+		return 8, nil
+	}
+	vv := "abxxxabxxxabxxxabxxxabxxxabxabxxxabxxxabxxxabxxxabxxxabxabxxxabxxxabxxxabxxx\n"
+	vv += vv
+	for i, v := range vv {
+		p[i] = byte(v)
+	}
+	m.num++
+	return len(vv), nil
+}
+func (m *MockReader) SyncMeta() error {
+	return nil
+}
+
+func (m *MockReader) Close() error {
+	return nil
+}
+
+var line string
+
+func BenchmarkReadPattern(b *testing.B) {
+	m := &MockReader{}
+	c := conf.MapConf{}
+	c[KeyLogPath] = "logpath"
+	c[KeyMode] = ModeDir
+	c[KeyDataSourceTag] = "tag1path"
+	ma, err := NewMetaWithConf(c)
+	if err != nil {
+		b.Error(err)
+	}
+	r, err := NewReaderSize(m, ma, 1024)
+	if err != nil {
+		b.Fatal(err)
+	}
+	err = r.SetMode(ReadModeHeadPatternString, "^abc")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		line, _ = r.ReadPattern()
+	}
 }

@@ -9,12 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qiniu/logkit/conf"
-	"github.com/qiniu/logkit/sender"
-	"github.com/qiniu/logkit/times"
-	"github.com/qiniu/logkit/utils"
-
 	"github.com/qiniu/log"
+	"github.com/qiniu/logkit/conf"
+	"github.com/qiniu/logkit/times"
+	. "github.com/qiniu/logkit/utils/models"
 	"github.com/vjeantet/grok"
 )
 
@@ -53,9 +51,10 @@ var (
 )
 
 type GrokParser struct {
-	name   string
-	labels []Label
-	mode   string
+	name                 string
+	labels               []Label
+	mode                 string
+	disableRecordErrData bool
 
 	timeZoneOffset int
 
@@ -126,14 +125,17 @@ func NewGrokParser(c conf.MapConf) (LogParser, error) {
 	customPatterns, _ := c.GetStringOr(KeyGrokCustomPatterns, "")
 	customPatternFiles, _ := c.GetStringListOr(KeyGrokCustomPatternFiles, []string{})
 
+	disableRecordErrData, _ := c.GetBoolOr(KeyDisableRecordErrData, false)
+
 	p := &GrokParser{
-		name:               name,
-		labels:             labels,
-		mode:               mode,
-		Patterns:           patterns,
-		CustomPatterns:     customPatterns,
-		CustomPatternFiles: customPatternFiles,
-		timeZoneOffset:     timeZoneOffset,
+		name:                 name,
+		labels:               labels,
+		mode:                 mode,
+		Patterns:             patterns,
+		CustomPatterns:       customPatterns,
+		CustomPatternFiles:   customPatternFiles,
+		timeZoneOffset:       timeZoneOffset,
+		disableRecordErrData: disableRecordErrData,
 	}
 	err = p.compile()
 	if err != nil {
@@ -145,7 +147,7 @@ func NewGrokParser(c conf.MapConf) (LogParser, error) {
 func (p *GrokParser) compile() error {
 	p.typeMap = make(map[string]map[string]string)
 	p.patterns = make(map[string]string)
-	gk, err := grok.NewWithConfig(&grok.Config{NamedCapturesOnly: true})
+	gk, err := grok.NewWithConfig(&grok.Config{NamedCapturesOnly: true, RemoveEmptyValues: true})
 	if err != nil {
 		return err
 	}
@@ -196,15 +198,24 @@ func (gp *GrokParser) Type() string {
 	return TypeGrok
 }
 
-func (gp *GrokParser) Parse(lines []string) ([]sender.Data, error) {
-	datas := []sender.Data{}
-	se := &utils.StatsError{}
+func (gp *GrokParser) Parse(lines []string) ([]Data, error) {
+	datas := []Data{}
+	se := &StatsError{}
 	for idx, line := range lines {
+		//grok不应该踢出掉空格，因为grok的Pattern可能按照空格来配置，只需要判断是不是全空扔掉。
+		if len(strings.TrimSpace(line)) <= 0 {
+			continue
+		}
 		data, err := gp.parseLine(line)
 		if err != nil {
 			se.AddErrors()
 			se.ErrorIndex = append(se.ErrorIndex, idx)
 			se.ErrorDetail = err
+			if !gp.disableRecordErrData {
+				errData := make(Data)
+				errData[KeyPandoraStash] = line
+				datas = append(datas, errData)
+			}
 			continue
 		}
 		if len(data) < 1 { //数据不为空的时候发送
@@ -217,7 +228,7 @@ func (gp *GrokParser) Parse(lines []string) ([]sender.Data, error) {
 	return datas, se
 }
 
-func (p *GrokParser) parseLine(line string) (sender.Data, error) {
+func (p *GrokParser) parseLine(line string) (Data, error) {
 	if p.mode == ModeMulti {
 		line = strings.Replace(line, "\n", " ", -1)
 	}
@@ -229,6 +240,7 @@ func (p *GrokParser) parseLine(line string) (sender.Data, error) {
 			log.Debugf("E! %v", err)
 			return nil, err
 		}
+		//此处匹配到就break的好处时匹配结果唯一，若要改为不break，那要考虑如果有多个串同时满足时，结果如何选取的问题，应该考虑优先选择匹配的结果多的数据。
 		if len(values) != 0 {
 			patternName = pattern
 			break
@@ -238,7 +250,7 @@ func (p *GrokParser) parseLine(line string) (sender.Data, error) {
 		log.Errorf("%v no value was parsed after grok pattern %v", line, p.Patterns)
 		return nil, fmt.Errorf("%v no value was parsed after grok pattern %v", line, p.Patterns)
 	}
-	data := sender.Data{}
+	data := Data{}
 	for k, v := range values {
 		if k == "" || v == "" {
 			continue

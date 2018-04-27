@@ -6,14 +6,13 @@ import (
 	"strconv"
 
 	"github.com/qiniu/log"
-	"github.com/qiniu/logkit/sender"
 	"github.com/qiniu/logkit/transforms"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
 )
 
 type ArrayExpand struct {
 	Key   string `json:"key"`
-	stats utils.StatsInfo
+	stats StatsInfo
 }
 
 func (p *ArrayExpand) transformToMap(val interface{}, key string) map[string]interface{} {
@@ -130,14 +129,14 @@ func (p *ArrayExpand) RawTransform(datas []string) ([]string, error) {
 	return datas, errors.New("array expand transformer not support rawTransform")
 }
 
-func (p *ArrayExpand) Transform(datas []sender.Data) ([]sender.Data, error) {
+func (p *ArrayExpand) Transform(datas []Data) ([]Data, error) {
 	var err, pErr error
 	errNums := 0
-	keys := utils.GetKeys(p.Key)
+	keys := GetKeys(p.Key)
 	newkeys := make([]string, len(keys))
 	for i := range datas {
 		copy(newkeys, keys)
-		val, gerr := utils.GetMapValue(datas[i], keys...)
+		val, gerr := GetMapValue(datas[i], keys...)
 		if gerr != nil {
 			errNums++
 			err = fmt.Errorf("transform key %v not exist in data", p.Key)
@@ -148,7 +147,7 @@ func (p *ArrayExpand) Transform(datas []sender.Data) ([]sender.Data, error) {
 				suffix := 0
 				keyName := key
 				newkeys[len(newkeys)-1] = keyName
-				_, gerr := utils.GetMapValue(datas[i], newkeys...)
+				_, gerr := GetMapValue(datas[i], newkeys...)
 				for ; gerr == nil; suffix++ {
 					if suffix > 5 {
 						log.Warnf("keys %v -- %v already exist, the key %v will be ignored", key, keyName, key)
@@ -156,10 +155,10 @@ func (p *ArrayExpand) Transform(datas []sender.Data) ([]sender.Data, error) {
 					}
 					keyName = key + "_" + strconv.Itoa(suffix)
 					newkeys[len(newkeys)-1] = keyName
-					_, gerr = utils.GetMapValue(datas[i], newkeys...)
+					_, gerr = GetMapValue(datas[i], newkeys...)
 				}
 				if suffix <= 5 {
-					utils.SetMapValue(datas[i], arrVal, false, newkeys...)
+					SetMapValue(datas[i], arrVal, false, newkeys...)
 				}
 			}
 
@@ -178,7 +177,8 @@ func (p *ArrayExpand) Transform(datas []sender.Data) ([]sender.Data, error) {
 }
 
 func (p *ArrayExpand) Description() string {
-	return "expand an array like arraykey:[a, b, c] into sender.Data map {arraykey0:a,arraykey1:b,arraykey2:c}"
+	//return "expand an array like arraykey:[a, b, c] into Data map {arraykey0:a,arraykey1:b,arraykey2:c}"
+	return "展开数组，例：arraykey:[a, b, c]展开为map{arraykey0:a,arraykey1:b,arraykey2:c}"
 }
 
 func (p *ArrayExpand) Type() string {
@@ -192,9 +192,8 @@ func (p *ArrayExpand) SampleConfig() string {
 	}`
 }
 
-func (p *ArrayExpand) ConfigOptions() []utils.Option {
-	return []utils.Option{
-		transforms.KeyStageAfterOnly,
+func (p *ArrayExpand) ConfigOptions() []Option {
+	return []Option{
 		transforms.KeyFieldName,
 	}
 }
@@ -203,7 +202,7 @@ func (p *ArrayExpand) Stage() string {
 	return transforms.StageAfterParser
 }
 
-func (p *ArrayExpand) Stats() utils.StatsInfo {
+func (p *ArrayExpand) Stats() StatsInfo {
 	return p.stats
 }
 

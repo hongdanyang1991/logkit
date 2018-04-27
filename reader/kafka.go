@@ -9,15 +9,20 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Shopify/sarama"
 	"github.com/qiniu/log"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
+
+	"github.com/Shopify/sarama"
+	"github.com/qiniu/logkit/conf"
 	"github.com/wvanbergen/kafka/consumergroup"
 )
+
+const defaultVersion = "0.8.2.0"
 
 type KafkaReader struct {
 	meta             *Meta
 	ConsumerGroup    string
+	version          string
 	Topics           []string
 	ZookeeperPeers   []string
 	ZookeeperChroot  string
@@ -32,29 +37,55 @@ type KafkaReader struct {
 	errs     <-chan error
 
 	status   int32
-	mux      sync.Mutex
-	startMux sync.Mutex
+	mux      *sync.Mutex
+	startMux *sync.Mutex
 	started  bool
 
-	stats     utils.StatsInfo
-	statsLock sync.RWMutex
+	curOffsets map[string]map[int32]int64
+	stats      StatsInfo
+	statsLock  *sync.RWMutex
 }
 
-func NewKafkaReader(meta *Meta, consumerGroup string,
-	topics []string, zookeeper []string, zookeeperTimeout time.Duration, whence string) (kr *KafkaReader, err error) {
+func NewKafkaReader(meta *Meta, conf conf.MapConf) (kr Reader, err error) {
+
+	whence, _ := conf.GetStringOr(KeyWhence, WhenceOldest)
+	consumerGroup, err := conf.GetString(KeyKafkaGroupID)
+	if err != nil {
+		return nil, err
+	}
+	topics, err := conf.GetStringList(KeyKafkaTopic)
+	if err != nil {
+		return nil, err
+	}
+	zookeeperTimeout, _ := conf.GetIntOr(KeyKafkaZookeeperTimeout, 1)
+
+	zookeeper, err := conf.GetStringList(KeyKafkaZookeeper)
+	if err != nil {
+		return nil, err
+	}
+	zkchroot, _ := conf.GetStringOr(KeyKafkaZookeeperChroot, "")
+
+	offsets := make(map[string]map[int32]int64)
+	for _, v := range topics {
+		offsets[v] = make(map[int32]int64)
+	}
+	version, err := conf.GetStringOr(KeyKafkaVersion, defaultVersion)
 	kr = &KafkaReader{
 		meta:             meta,
 		ConsumerGroup:    consumerGroup,
+		version:          version,
 		ZookeeperPeers:   zookeeper,
-		ZookeeperTimeout: zookeeperTimeout,
+		ZookeeperTimeout: time.Duration(zookeeperTimeout) * time.Second,
+		ZookeeperChroot:  zkchroot,
 		Topics:           topics,
 		Whence:           whence,
 		readChan:         make(chan json.RawMessage),
 		errs:             make(chan error, 1000),
 		status:           StatusInit,
-		mux:              sync.Mutex{},
-		startMux:         sync.Mutex{},
-		statsLock:        sync.RWMutex{},
+		mux:              new(sync.Mutex),
+		startMux:         new(sync.Mutex),
+		statsLock:        new(sync.RWMutex),
+		curOffsets:       offsets,
 		started:          false,
 	}
 	return kr, nil
@@ -64,7 +95,7 @@ func (kr *KafkaReader) Name() string {
 	return fmt.Sprintf("KafkaReader:[%s],[%s]", strings.Join(kr.Topics, ","), kr.ConsumerGroup)
 }
 
-func (kr *KafkaReader) Status() utils.StatsInfo {
+func (kr *KafkaReader) Status() StatsInfo {
 	kr.statsLock.RLock()
 	defer kr.statsLock.RUnlock()
 	return kr.stats
@@ -96,7 +127,7 @@ func (kr *KafkaReader) ReadLine() (data string, err error) {
 }
 
 func (kr *KafkaReader) Close() (err error) {
-	if atomic.CompareAndSwapInt32(&kr.status, StatusRunning, StatusStoping) {
+	if atomic.CompareAndSwapInt32(&kr.status, StatusRunning, StatusStopping) {
 		log.Infof("Runner[%v] %v stopping", kr.meta.RunnerName, kr.Name())
 	} else {
 		close(kr.readChan)
@@ -120,7 +151,15 @@ func (kr *KafkaReader) Start() {
 		return
 	}
 	config := consumergroup.NewConfig()
-	config.Zookeeper.Chroot = ""
+	//kafka version
+	versions := KafkaVersion()
+	if v, ok := versions[kr.version]; ok {
+		config.Version = v
+	} else {
+		config.Version = versions[defaultVersion]
+		log.Debugf("kafka version config error, use default version : %v", defaultVersion)
+	}
+	config.Zookeeper.Chroot = kr.ZookeeperChroot
 	config.Zookeeper.Timeout = kr.ZookeeperTimeout
 	switch strings.ToLower(kr.Whence) {
 	case "oldest", "":
@@ -129,7 +168,7 @@ func (kr *KafkaReader) Start() {
 		config.Offsets.Initial = sarama.OffsetNewest
 	default:
 		log.Warnf("Runner[%v] WARNING: Kafka consumer invalid offset '%s', using 'oldest'\n", kr.meta.RunnerName, kr.Whence)
-		config.Offsets.Initial = sarama.OffsetNewest
+		config.Offsets.Initial = sarama.OffsetOldest
 	}
 	if kr.Consumer == nil || kr.Consumer.Closed() {
 		var consumerErr error
@@ -164,7 +203,7 @@ func (kr *KafkaReader) run() {
 	// stopping时推出改为 stopped，不再运行
 	defer func() {
 		atomic.CompareAndSwapInt32(&kr.status, StatusRunning, StatusInit)
-		if atomic.CompareAndSwapInt32(&kr.status, StatusStoping, StatusStopped) {
+		if atomic.CompareAndSwapInt32(&kr.status, StatusStopping, StatusStopped) {
 			close(kr.readChan)
 			go func() {
 				kr.mux.Lock()
@@ -179,7 +218,7 @@ func (kr *KafkaReader) run() {
 	}()
 	// 开始work逻辑
 	for {
-		if atomic.LoadInt32(&kr.status) == StatusStoping {
+		if atomic.LoadInt32(&kr.status) == StatusStopping {
 			log.Warnf("Runner[%v] %v stopped from running", kr.meta.RunnerName, kr.Name())
 			return
 		}
@@ -193,6 +232,16 @@ func (kr *KafkaReader) run() {
 			if msg != nil && msg.Value != nil && len(msg.Value) > 0 {
 				kr.readChan <- msg.Value
 				kr.curMsg = msg
+				kr.statsLock.Lock()
+				if tp, ok := kr.curOffsets[msg.Topic]; ok {
+					tp[msg.Partition] = msg.Offset
+					kr.curOffsets[msg.Topic] = tp
+				} else {
+					tp := make(map[int32]int64)
+					tp[msg.Partition] = msg.Offset
+					kr.curOffsets[msg.Topic] = tp
+				}
+				kr.statsLock.Unlock()
 			}
 		default:
 			time.Sleep(time.Second)
@@ -202,4 +251,28 @@ func (kr *KafkaReader) run() {
 
 func (kr *KafkaReader) SetMode(mode string, v interface{}) error {
 	return errors.New("KafkaReader not support read mode")
+}
+
+func (kr *KafkaReader) Lag() (rl *LagInfo, err error) {
+	if kr.Consumer == nil {
+		return nil, errors.New("kafka consumer is closed")
+	}
+	marks := kr.Consumer.HighWaterMarks()
+	rl = &LagInfo{
+		SizeUnit: "records",
+		Size:     0,
+	}
+	for _, ptv := range marks {
+		for _, v := range ptv {
+			rl.Size += v
+		}
+	}
+	kr.statsLock.RLock()
+	for _, ptv := range kr.curOffsets {
+		for _, v := range ptv {
+			rl.Size -= v
+		}
+	}
+	kr.statsLock.RUnlock()
+	return
 }

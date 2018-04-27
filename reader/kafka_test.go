@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/qiniu/logkit/conf"
+	. "github.com/qiniu/logkit/utils/models"
 
-	"github.com/qiniu/logkit/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,10 +32,11 @@ func TestKafkaReader(t *testing.T) {
 		readChan:         make(chan json.RawMessage),
 		errs:             make(chan error, 1000),
 		status:           StatusInit,
-		mux:              sync.Mutex{},
+		mux:              new(sync.Mutex),
 		started:          false,
+		statsLock:        new(sync.RWMutex),
 	}
 	assert.EqualValues(t, "KafkaReader:[topic1],[group1]", er.Name())
 
-	assert.Equal(t, utils.StatsInfo{}, er.Status())
+	assert.Equal(t, StatsInfo{}, er.Status())
 }

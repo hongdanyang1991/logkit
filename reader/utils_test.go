@@ -2,11 +2,14 @@ package reader
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 	"testing"
-
 	"time"
+
+	. "github.com/qiniu/logkit/utils/models"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -91,4 +94,43 @@ func TestParseDuration(t *testing.T) {
 	dur, err = parseLoopDuration("loop 1-")
 	assert.Error(t, err)
 	assert.Equal(t, time.Duration(0), dur)
+}
+
+func TestModTimeLater(t *testing.T) {
+	dir := "TestModTimeLater"
+	err := os.Mkdir(dir, DefaultDirPerm)
+	assert.NoError(t, err)
+	defer os.RemoveAll(dir)
+	for _, v := range []string{"f1", "f2", "f3"} {
+		err := ioutil.WriteFile(filepath.Join(dir, v), []byte("abc"), 0644)
+		assert.NoError(t, err)
+	}
+	cs, err := getMaxFile(dir, func(info os.FileInfo) bool { return true }, modTimeLater)
+	assert.NoError(t, err)
+	assert.Equal(t, "f3", cs.Name())
+	cs, err = getMinFile(dir, func(info os.FileInfo) bool { return true }, modTimeLater)
+	assert.NoError(t, err)
+	assert.Equal(t, "f1", cs.Name())
+}
+
+func TestGetTags(t *testing.T) {
+	tagFile := "./tagFile.json"
+	err := ioutil.WriteFile(tagFile, []byte(`{  
+	   	"Title":"tags",
+	    "Author":["john","ada","alice"],
+	    "IsTrue":true,
+	    "Host":99
+	  	}`), 0644)
+	assert.NoError(t, err)
+	defer os.Remove(tagFile)
+	err = nil
+	exp := map[string]interface{}{
+		"Title":  "tags",
+		"Author": []interface{}{"john", "ada", "alice"},
+		"IsTrue": bool(true),
+		"Host":   float64(99),
+	}
+	tags, err := getTags(tagFile)
+	assert.NoError(t, err)
+	assert.Equal(t, exp, tags)
 }

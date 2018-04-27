@@ -6,12 +6,9 @@ import (
 	"io"
 	"regexp"
 
+	. "github.com/qiniu/pandora-go-sdk/base/models"
 	"github.com/qiniu/pandora-go-sdk/base/reqerr"
 )
-
-type TsdbToken struct {
-	Token string `json:"-"`
-}
 
 const (
 	seriesNamePattern = "^[a-zA-Z_][a-zA-Z0-9_]{0,127}$"
@@ -21,10 +18,10 @@ const (
 func validateSeriesName(seriesName string) (err error) {
 	matched, err := regexp.MatchString(seriesNamePattern, seriesName)
 	if err != nil {
-		return reqerr.NewInvalidArgs("SeriesName", err.Error())
+		return reqerr.NewInvalidArgs("SeriesName", err.Error()).WithComponent("tsdb")
 	}
 	if !matched {
-		return reqerr.NewInvalidArgs("SeriesName", fmt.Sprintf("invalid series name: %s", seriesName))
+		return reqerr.NewInvalidArgs("SeriesName", fmt.Sprintf("invalid series name: %s", seriesName)).WithComponent("tsdb")
 	}
 	return
 }
@@ -32,17 +29,17 @@ func validateSeriesName(seriesName string) (err error) {
 func validateRepoName(repoName string) (err error) {
 	matched, err := regexp.MatchString(repoNamePattern, repoName)
 	if err != nil {
-		return reqerr.NewInvalidArgs("RepoName", err.Error())
+		return reqerr.NewInvalidArgs("RepoName", err.Error()).WithComponent("tsdb")
 	}
 	if !matched {
-		return reqerr.NewInvalidArgs("RepoName", fmt.Sprintf("invalid repo name: %s", repoName))
+		return reqerr.NewInvalidArgs("RepoName", fmt.Sprintf("invalid repo name: %s", repoName)).WithComponent("tsdb")
 	}
 	return
 }
 
 //repo related
 type CreateRepoInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 	Region   string            `json:"region"`
 	Metadata map[string]string `json:"metadata"`
@@ -54,13 +51,13 @@ func (r *CreateRepoInput) Validate() (err error) {
 	}
 
 	if r.Region == "" {
-		return reqerr.NewInvalidArgs("Region", "region should not be empty")
+		return reqerr.NewInvalidArgs("Region", "region should not be empty").WithComponent("tsdb")
 	}
 	return
 }
 
 type GetRepoInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 }
 
@@ -81,37 +78,37 @@ type RepoDesc struct {
 }
 
 type ListReposInput struct {
-	TsdbToken
+	PandoraToken
 }
 
 type ListReposOutput []RepoDesc
 
 type DeleteRepoInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 }
 
 type UpdateRepoMetadataInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 	Metadata map[string]string `json:"metadata"`
 }
 
 func (r *UpdateRepoMetadataInput) Validate() (err error) {
 	if r.Metadata == nil {
-		return reqerr.NewInvalidArgs("Metadata", "metadata should not be empty")
+		return reqerr.NewInvalidArgs("Metadata", "metadata should not be empty").WithComponent("tsdb")
 	}
 	return
 }
 
 type DeleteRepoMetadataInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 }
 
 //series related
 type CreateSeriesInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName   string
 	SeriesName string
 	Retention  string            `json:"retention"`
@@ -127,7 +124,7 @@ func (s *CreateSeriesInput) Validate() (err error) {
 }
 
 type UpdateSeriesMetadataInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName   string
 	SeriesName string
 	Metadata   map[string]string `json:"metadata"`
@@ -135,19 +132,19 @@ type UpdateSeriesMetadataInput struct {
 
 func (s *UpdateSeriesMetadataInput) Validate() (err error) {
 	if s.Metadata == nil {
-		return reqerr.NewInvalidArgs("Metadata", "metadata should not be empty")
+		return reqerr.NewInvalidArgs("Metadata", "metadata should not be empty").WithComponent("tsdb")
 	}
 	return
 }
 
 type DeleteSeriesMetadataInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName   string
 	SeriesName string
 }
 
 type ListSeriesInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 	ShowMeta bool
 }
@@ -166,12 +163,12 @@ type ListSeriesOutput []SeriesDesc
 type DeleteSeriesInput struct {
 	RepoName   string
 	SeriesName string
-	TsdbToken
+	PandoraToken
 }
 
 //view related
 type CreateViewInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName  string
 	ViewName  string
 	Sql       string            `json:"sql"`
@@ -184,7 +181,7 @@ func (v *CreateViewInput) Validate() (err error) {
 }
 
 type ListViewInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 }
 
@@ -198,7 +195,7 @@ type ViewDesc struct {
 }
 
 type GetViewInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 	ViewName string
 }
@@ -212,7 +209,7 @@ type GetViewOutput struct {
 }
 
 type DeleteViewInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 	ViewName string
 }
@@ -241,39 +238,39 @@ func (ps Points) Buffer() []byte {
 }
 
 type PostPointsInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 	Points   Points
 }
 
 type PostPointsFromFileInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 	FilePath string
 }
 
 type PostPointsFromReaderInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 	Reader   io.ReadSeeker
 }
 
 type PostPointsFromBytesInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 	Buffer   []byte
 }
 
 // query related
 type QueryInput struct {
-	TsdbToken
+	PandoraToken
 	RepoName string
 	Sql      string `json:"sql"`
 }
 
 func (q *QueryInput) Validate() (err error) {
 	if q.Sql == "" {
-		return reqerr.NewInvalidArgs("QueryInput", "sql should not be empty")
+		return reqerr.NewInvalidArgs("QueryInput", "sql should not be empty").WithComponent("tsdb")
 	}
 	return
 }

@@ -8,7 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
+	utilsos "github.com/qiniu/logkit/utils/os"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -23,7 +24,7 @@ func Test_singleFileRotate(t *testing.T) {
 	createTestFile(fileName, "12345")
 
 	//create sf
-	meta, err := NewMeta(metaDir, metaDir, testlogpath, ModeFile, defautFileRetention)
+	meta, err := NewMeta(metaDir, metaDir, testlogpath, ModeFile, "", defautFileRetention)
 	if err != nil {
 		t.Error(err)
 	}
@@ -35,7 +36,7 @@ func Test_singleFileRotate(t *testing.T) {
 	absPath, err := filepath.Abs(fileName)
 	assert.NoError(t, err)
 	assert.Equal(t, absPath, sf.Source())
-	oldInode, err := utils.GetIdentifyIDByPath(absPath)
+	oldInode, err := utilsos.GetIdentifyIDByPath(absPath)
 	assert.NoError(t, err)
 
 	//rotate file(rename old file + create new file)
@@ -57,7 +58,7 @@ func Test_singleFileRotate(t *testing.T) {
 		t.Error(err)
 	}
 
-	newInode, err := utils.GetIdentifyIDByPath(fileName)
+	newInode, err := utilsos.GetIdentifyIDByPath(fileName)
 	assert.NoError(t, err)
 	assert.NotEqual(t, newInode, oldInode)
 
@@ -78,7 +79,7 @@ func Test_singleFileNotRotate(t *testing.T) {
 	defer deleteTestFile(fileName)
 
 	//create sf
-	meta, err := NewMeta(metaDir, metaDir, testlogpath, ModeFile, defautFileRetention)
+	meta, err := NewMeta(metaDir, metaDir, testlogpath, ModeFile, "", defautFileRetention)
 	if err != nil {
 		t.Error(err)
 	}
@@ -87,7 +88,7 @@ func Test_singleFileNotRotate(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	oldInode, err := utils.GetIdentifyIDByFile(sf.f)
+	oldInode, err := utilsos.GetIdentifyIDByFile(sf.f)
 	assert.NoError(t, err)
 
 	//read file 正常读
@@ -103,7 +104,7 @@ func Test_singleFileNotRotate(t *testing.T) {
 	n, err = sf.Read(p)
 	assert.Equal(t, io.EOF, err)
 
-	newInode, err := utils.GetIdentifyIDByFile(sf.f)
+	newInode, err := utilsos.GetIdentifyIDByFile(sf.f)
 	assert.NoError(t, err)
 	assert.Equal(t, newInode, oldInode)
 
@@ -119,14 +120,14 @@ func Test_singleFileNotRotate(t *testing.T) {
 
 func createTestFile(fileName string, content string) {
 
-	f, _ := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, defaultFilePerm)
+	f, _ := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY, DefaultFilePerm)
 	f.WriteString(content)
 	f.Sync()
 	f.Close()
 }
 
 func appendTestFile(fileName, content string) {
-	f, _ := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY, defaultFilePerm)
+	f, _ := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY, DefaultFilePerm)
 	f.WriteString(content)
 	f.Sync()
 	f.Close()

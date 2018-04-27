@@ -2,20 +2,19 @@ package reader
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/qiniu/logkit/rateio"
-	"github.com/qiniu/logkit/utils"
-
-	"sync"
-
-	"fmt"
+	. "github.com/qiniu/logkit/utils/models"
+	utilsos "github.com/qiniu/logkit/utils/os"
 
 	"github.com/qiniu/log"
 )
@@ -36,15 +35,15 @@ type SingleFile struct {
 	meta *Meta // 记录offset的元数据
 }
 
-func NewSingleFile(meta *Meta, path, whence string, isFromWeb bool) (sf *SingleFile, err error) {
+func NewSingleFile(meta *Meta, path, whence string, errDirectReturn bool) (sf *SingleFile, err error) {
 	var pfi os.FileInfo
 	var f *os.File
 	originpath := path
 
 	for {
-		path, pfi, err = utils.GetRealPath(path)
+		path, pfi, err = GetRealPath(path)
 		if err != nil || pfi == nil {
-			if isFromWeb {
+			if errDirectReturn {
 				return sf, fmt.Errorf("runner[%v] %s - utils.GetRealPath failed, err:%v", meta.RunnerName, path, err)
 			}
 			log.Warnf("Runner[%v] %s - utils.GetRealPath failed, err:%v", meta.RunnerName, path, err)
@@ -52,7 +51,7 @@ func NewSingleFile(meta *Meta, path, whence string, isFromWeb bool) (sf *SingleF
 			continue
 		}
 		if !pfi.Mode().IsRegular() {
-			if isFromWeb {
+			if errDirectReturn {
 				return sf, fmt.Errorf("runner[%v] %s - file failed, err: file is not regular", meta.RunnerName, path)
 			}
 			log.Warnf("Runner[%v] %s - file failed, err: file is not regular", meta.RunnerName, path)
@@ -61,7 +60,7 @@ func NewSingleFile(meta *Meta, path, whence string, isFromWeb bool) (sf *SingleF
 		}
 		f, err = os.Open(path)
 		if err != nil {
-			if isFromWeb {
+			if errDirectReturn {
 				return sf, fmt.Errorf("runner[%v] %s - open file err:%v", meta.RunnerName, path, err)
 			}
 			log.Warnf("Runner[%v] %s - open file err:%v", meta.RunnerName, path, err)
@@ -128,7 +127,7 @@ func (sf *SingleFile) statFile(path string) (pfi os.FileInfo, err error) {
 			err = errors.New("reader " + sf.Name() + " has been exited")
 			return
 		}
-		path, pfi, err = utils.GetRealPath(path)
+		path, pfi, err = GetRealPath(path)
 		if err != nil || pfi == nil {
 			log.Warnf("Runner[%v] %s - utils.GetRealPath failed, err:%v", sf.meta.RunnerName, path, err)
 			time.Sleep(time.Minute)
@@ -147,7 +146,7 @@ func (sf *SingleFile) openSingleFile(path string) (pfi os.FileInfo, f *os.File, 
 			return
 		}
 
-		path, pfi, err = utils.GetRealPath(path)
+		path, pfi, err = GetRealPath(path)
 		if err != nil || pfi == nil {
 			log.Warnf("Runner[%v] %s - utils.GetRealPath failed, err:%v", sf.meta.RunnerName, path, err)
 			time.Sleep(time.Minute)
@@ -210,7 +209,7 @@ func (sf *SingleFile) detectMovedName(inode uint64) (name string) {
 		if fi.IsDir() || !strings.HasPrefix(fi.Name(), sf.pfi.Name()) {
 			continue
 		}
-		newInode, err := utils.GetIdentifyIDByPath(filepath.Join(dir, fi.Name()))
+		newInode, err := utilsos.GetIdentifyIDByPath(filepath.Join(dir, fi.Name()))
 		if err != nil {
 			log.Error(err)
 			continue
@@ -224,11 +223,11 @@ func (sf *SingleFile) detectMovedName(inode uint64) (name string) {
 }
 
 func (sf *SingleFile) Reopen() (err error) {
-	newInode, err := utils.GetIdentifyIDByPath(sf.originpath)
+	newInode, err := utilsos.GetIdentifyIDByPath(sf.originpath)
 	if err != nil {
 		return
 	}
-	oldInode, err := utils.GetIdentifyIDByFile(sf.f)
+	oldInode, err := utilsos.GetIdentifyIDByFile(sf.f)
 	if err != nil {
 		return
 	}
@@ -326,4 +325,18 @@ func (sf *SingleFile) SyncMeta() error {
 	sf.lastSyncOffset = sf.offset
 	sf.lastSyncPath = sf.originpath
 	return sf.meta.WriteOffset(sf.originpath, sf.offset)
+}
+
+func (sf *SingleFile) Lag() (rl *LagInfo, err error) {
+	sf.mux.Lock()
+	rl = &LagInfo{Size: -sf.offset}
+	sf.mux.Unlock()
+
+	fi, err := os.Stat(sf.originpath)
+	if err != nil {
+		return
+	}
+	rl.Size += fi.Size()
+	rl.SizeUnit = "bytes"
+	return
 }

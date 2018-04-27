@@ -1,36 +1,35 @@
 package mutate
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/json-iterator/go"
 	"github.com/qiniu/log"
-	"github.com/qiniu/logkit/sender"
 	"github.com/qiniu/logkit/transforms"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
 )
 
 type Json struct {
-	OldKey  string `json:"key"`
-	NewKey  string `json:"newKey"`
-	stats   utils.StatsInfo
-	oldKeys []string
-	newKeys []string
+	OldKey   string `json:"key"`
+	NewKey   string `json:"newKey"`
+	stats    StatsInfo
+	jsonTool jsoniter.API
+	oldKeys  []string
+	newKeys  []string
 }
 
 func (g *Json) Init() error {
-	g.oldKeys = utils.GetKeys(g.OldKey)
-	g.newKeys = utils.GetKeys(g.NewKey)
+	g.oldKeys = GetKeys(g.OldKey)
+	g.newKeys = GetKeys(g.NewKey)
 	return nil
 }
 
-func (g *Json) Transform(datas []sender.Data) ([]sender.Data, error) {
+func (g *Json) Transform(datas []Data) ([]Data, error) {
 	var err, ferr error
 	errnums := 0
-
 	for i := range datas {
-		val, gerr := utils.GetMapValue(datas[i], g.oldKeys...)
+		val, gerr := GetMapValue(datas[i], g.oldKeys...)
 		if gerr != nil {
 			errnums++
 			err = fmt.Errorf("transform key %v not exist in data", g.OldKey)
@@ -42,17 +41,17 @@ func (g *Json) Transform(datas []sender.Data) ([]sender.Data, error) {
 			err = fmt.Errorf("transform key %v data type is not string", g.OldKey)
 			continue
 		}
-		jsonVal, perr := parseJson(strval)
+		jsonVal, perr := parseJson(g.jsonTool, strval)
 		if perr != nil {
 			errnums++
 			err = perr
 			continue
 		}
 		if len(g.newKeys) > 0 {
-			utils.SetMapValue(datas[i], jsonVal, false, g.newKeys...)
+			SetMapValue(datas[i], jsonVal, false, g.newKeys...)
 		} else {
 			for k, v := range jsonVal {
-				utils.SetMapValue(datas[i], v, false, k)
+				SetMapValue(datas[i], v, false, k)
 			}
 		}
 	}
@@ -69,20 +68,18 @@ func (g *Json) RawTransform(datas []string) ([]string, error) {
 	return datas, errors.New("json transformer not support rawTransform")
 }
 
-func parseJson(jsonStr string) (data map[string]interface{}, err error) {
-	data = sender.Data{}
-	decoder := json.NewDecoder(bytes.NewReader([]byte(jsonStr)))
-	decoder.UseNumber()
-	if err = decoder.Decode(&data); err != nil {
+func parseJson(jsonTool jsoniter.API, jsonStr string) (data map[string]interface{}, err error) {
+	err = jsonTool.Unmarshal([]byte(jsonStr), &data)
+	if err != nil {
 		err = fmt.Errorf("parse json str error %v, jsonStr is: %v", err, jsonStr)
 		log.Debug(err)
 	}
-
 	return
 }
 
 func (g *Json) Description() string {
-	return "parse jsonStr to json"
+	//return "parse jsonStr to json"
+	return "解析json"
 }
 
 func (g *Json) Type() string {
@@ -91,19 +88,20 @@ func (g *Json) Type() string {
 
 func (g *Json) SampleConfig() string {
 	return `{
-		"type":"jsonTransform",
-		"key":"myParseKey",
-	}`
+       "type":"json",
+       "key":"myParseKey",
+       "newKey":"myNewKey"
+    }`
 }
 
-func (g *Json) ConfigOptions() []utils.Option {
-	return []utils.Option{
+func (g *Json) ConfigOptions() []Option {
+	return []Option{
 		transforms.KeyFieldName,
 		{
 			KeyName:      "newKey",
 			ChooseOnly:   false,
 			Default:      "",
-			DefaultNoUse: true,
+			DefaultNoUse: false,
 			Description:  "新的字段名",
 			Type:         transforms.TransformTypeString,
 		},
@@ -114,12 +112,17 @@ func (g *Json) Stage() string {
 	return transforms.StageAfterParser
 }
 
-func (g *Json) Stats() utils.StatsInfo {
+func (g *Json) Stats() StatsInfo {
 	return g.stats
 }
 
 func init() {
 	transforms.Add("jsonTransform", func() transforms.Transformer {
-		return &Json{}
+		return &Json{
+			jsonTool: jsoniter.Config{
+				EscapeHTML: true,
+				UseNumber:  true,
+			}.Froze(),
+		}
 	})
 }

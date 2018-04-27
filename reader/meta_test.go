@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/qiniu/logkit/conf"
-	"github.com/qiniu/logkit/utils"
+	. "github.com/qiniu/logkit/utils/models"
 
 	"github.com/qiniu/log"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,9 +26,8 @@ func createFile(interval int) {
 	createDir()
 	createOnlyFiles(interval)
 }
-
 func createDir() {
-	err := os.Mkdir(dir, 0755)
+	err := os.Mkdir(dir, DefaultDirPerm)
 	if err != nil {
 		log.Error(err)
 		return
@@ -36,7 +36,7 @@ func createDir() {
 
 func createOnlyFiles(interval int) {
 	for i, f := range files {
-		file, err := os.OpenFile(filepath.Join(dir, f), os.O_CREATE|os.O_WRONLY, defaultFilePerm)
+		file, err := os.OpenFile(filepath.Join(dir, f), os.O_CREATE|os.O_WRONLY, DefaultFilePerm)
 		if err != nil {
 			log.Error(err)
 			return
@@ -69,25 +69,25 @@ func TestMeta(t *testing.T) {
 	os.RemoveAll(metaDir)
 	// no metaDir conf except work
 	confNoMetaPath := conf.MapConf{
-		KeyLogPath:          dir,
-		utils.GlobalKeyName: "mock_runner_name",
-		KeyMode:             ModeDir,
+		KeyLogPath:    dir,
+		GlobalKeyName: "mock_runner_name",
+		KeyMode:       ModeDir,
 	}
 	meta, err = NewMetaWithConf(confNoMetaPath)
 	if err != nil {
 		t.Error(err)
 	}
-	f, err := os.Stat("meta/" + "mock_runner_name_" + hash(dir))
+	f, err := os.Stat("meta/" + "mock_runner_name_" + Hash(dir))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasSuffix(f.Name(), hash(dir)) {
+	if !strings.HasSuffix(f.Name(), Hash(dir)) {
 		t.Fatal("not excepted dir")
 	}
 	dirToRm := "meta"
 	os.RemoveAll(dirToRm)
 
-	meta, err = NewMeta(metaDir, metaDir, ModeDir, "logpath", 7)
+	meta, err = NewMeta(metaDir, metaDir, ModeDir, "logpath", "", 7)
 	if err != nil {
 		t.Error(err)
 	}
@@ -206,4 +206,21 @@ func Test_getdonefiles(t *testing.T) {
 	if meta.GetMode() != ModeDir {
 		t.Error("get mode error")
 	}
+}
+
+func TestExtraInfo(t *testing.T) {
+	meta, err := NewMetaWithConf(conf.MapConf{
+		ExtraInfo: "true",
+		KeyMode:   ModeMysql,
+	})
+	assert.NoError(t, err)
+	got := meta.ExtraInfo()
+	assert.Equal(t, len(got), 4)
+	meta, err = NewMetaWithConf(conf.MapConf{
+		KeyMode: ModeMysql,
+	})
+	assert.NoError(t, err)
+	got = meta.ExtraInfo()
+	assert.NotNil(t, got)
+	assert.Equal(t, len(got), 0)
 }

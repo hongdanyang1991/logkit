@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/qiniu/logkit/conf"
+	. "github.com/qiniu/logkit/utils/models"
 
-	"github.com/qiniu/logkit/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,5 +37,5 @@ func TestElasticReader(t *testing.T) {
 	assert.EqualValues(t, er.offset, got)
 
 	sts := er.Status()
-	assert.Equal(t, utils.StatsInfo{}, sts)
+	assert.Equal(t, StatsInfo{}, sts)
 }
