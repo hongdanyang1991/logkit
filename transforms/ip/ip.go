@@ -24,6 +24,7 @@ type IpTransformer struct {
 	IpList    [][]string `json:"ip_list"`
 	db        *geoip2.Reader
 	stats     utils.StatsInfo
+	IpMap	  map[string]string   //ip映射
 }
 
 func (it *IpTransformer) Init() error {
@@ -32,6 +33,7 @@ func (it *IpTransformer) Init() error {
 		return err
 	}
 	it.db = db
+	it.IpMap = map[string]string{}
 	return nil
 }
 
@@ -89,21 +91,28 @@ var ipList = [][]string{
 //映射ip字段
 func (it *IpTransformer) randomIp(doc Data) {
 	rawIp := doc[it.Key]
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	len := len(it.IpList)
-	seed := r.Intn(len - 1)
-	ip := it.IpList[seed]
-	ip[2] = strconv.Itoa(r.Intn(255))
-	ip[3] = strconv.Itoa(r.Intn(255))
-	var ipStr = strings.Join(ip, ".")
-	doc[it.Key] = ipStr
-	message := doc["message"]
-	if messageStr, ok := message.(string); ok {
-		if rawIpStr, ok := rawIp.(string); ok {
+	var ipStr string
+	if rawIpStr, ok := rawIp.(string); ok {
+		if _, ok := it.IpMap[rawIpStr]; ok {
+			ipStr = it.IpMap[rawIpStr]
+		} else {
+			r := rand.New(rand.NewSource(time.Now().UnixNano()))
+			len := len(it.IpList)
+			seed := r.Intn(len - 1)
+			ip := it.IpList[seed]
+			ip[2] = strconv.Itoa(r.Intn(255))
+			ip[3] = strconv.Itoa(r.Intn(255))
+			ipStr = strings.Join(ip, ".")
+			it.IpMap[rawIpStr] = ipStr
+		}
+		doc[it.Key] = ipStr
+		message := doc["message"]
+		if messageStr, ok := message.(string); ok {
 			message = strings.Replace(messageStr, rawIpStr, ipStr, 1)
 			doc["message"] = message
 		}
 	}
+
 }
 
 func (it *IpTransformer) Transform(datas []Data) ([]Data, error) {

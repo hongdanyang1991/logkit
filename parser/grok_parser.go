@@ -218,7 +218,7 @@ func (gp *GrokParser) Parse(lines []string) ([]Data, error) {
 		if len(data) < 1 { //数据不为空的时候发送
 			continue
 		}
-		log.Debugf("D! parse result(%v)", data)
+		//log.Debugf("D! parse result(%v)", data)
 		datas = append(datas, data)
 		se.AddSuccess()
 	}

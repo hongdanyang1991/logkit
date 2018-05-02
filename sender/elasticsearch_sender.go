@@ -46,6 +46,9 @@ type ElasticsearchSender struct {
 	repeat         int
 	offSet         int
 	IP             string
+	Percent        int
+	IpMap		   map[int]map[string]bool
+
 }
 
 const (
@@ -66,6 +69,7 @@ const (
 	keyRepeatNum			= "elastic_repeat_num" //重复次数
 	keyOffset				= "elastic_offset"     //偏移量 单位: 小时
 	keyIP                   = "elastic_ip"         //ip字段名
+	keyPercent              = "elastic_percent"    //比率
 	//keyDataSource			= "elastic_data_source"//dataSource字段名
 )
 
@@ -117,6 +121,8 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 	repeatNum, err := conf.GetIntOr(keyRepeatNum, 1)
 
 	offSet, err := conf.GetIntOr(keyOffset, 0)
+
+	percent, err := conf.GetIntOr(keyPercent, 3)
 
 	IP, err := conf.GetStringOr(keyIP, "clientip")
 
@@ -190,6 +196,11 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 			return
 		}
 	}
+	IpMap := map[int]map[string]bool{}
+	for j := 0; j < repeatNum;   j ++{
+		IpMap[j] = map[string]bool{}
+	}
+
 
 	return &ElasticsearchSender{
 		name:            name,
@@ -211,6 +222,8 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 		repeat:          repeatNum,
 		offSet:          offSet,
 		IP:				 IP,
+		IpMap:      	 IpMap,
+		Percent:         percent,
 	}, nil
 }
 
@@ -294,6 +307,7 @@ func (ess *ElasticsearchSender) SendOnce(data []Data, i int) (err error) {
 			if err = processDoc(ess, doc, i); err != nil {
 				continue
 			}
+
 			//计算索引
 			if indexName, err = buildIndexName(ess, doc, ess.indexName, ess.timeZone, ess.intervalIndex); err != nil {
 				continue
@@ -307,6 +321,25 @@ func (ess *ElasticsearchSender) SendOnce(data []Data, i int) (err error) {
 				doc[KeySendTime] = time.Now().In(ess.timeZone)
 			}*/
 			doc2 := doc
+
+			//随机是否发送
+			if ipStr, ok := doc2[ess.IP].(string); ok {
+				if b, ok := ess.IpMap[i][ipStr]; ok{
+					if !b {
+						continue
+					}
+				} else {
+					r := rand.New(rand.NewSource(time.Now().UnixNano()))
+					rInt := r.Intn(100)
+					if rInt % ess.Percent != 0 {
+						ess.IpMap[i][ipStr] = true
+					} else {
+						ess.IpMap[i][ipStr] = false
+						continue
+					}
+				}
+			}
+
 			bulkService.Add(elasticV5.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
 		}
 

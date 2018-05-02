@@ -1,8 +1,0 @@
-2018/03/29 16:47:32 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
-2018/03/29 16:47:34 [INFO][github.com/hongdanyang1991/blogkit-plugins/common/telegraf/agent] accumulator.go:109: E! Error in plugin [inputs.]: Unable to connect to redis server 'localhost:6379': dial tcp [::1]:6379: connectex: No connection could be made because the target machine actively refused it.
-2018/03/29 16:47:42 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
-2018/03/29 16:47:44 [INFO][github.com/hongdanyang1991/blogkit-plugins/common/telegraf/agent] accumulator.go:109: E! Error in plugin [inputs.]: Unable to connect to redis server 'localhost:6379': dial tcp [::1]:6379: connectex: No connection could be made because the target machine actively refused it.
-2018/03/29 16:47:52 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
-2018/03/29 16:47:54 [INFO][github.com/hongdanyang1991/blogkit-plugins/common/telegraf/agent] accumulator.go:109: E! Error in plugin [inputs.]: Unable to connect to redis server 'localhost:6379': dial tcp [::1]:6379: connectex: No connection could be made because the target machine actively refused it.
-2018/03/29 16:48:02 [INFO][github.com/hongdanyang1991/blogkit-plugins/redis] redis.go:39: start collect redis metric data
-2018/03/29 16:48:04 [INFO][github.com/hongdanyang1991/blogkit-plugins/common/telegraf/agent] accumulator.go:109: E! Error in plugin [inputs.]: Unable to connect to redis server 'localhost:6379': dial tcp [::1]:6379: connectex: No connection could be made because the target machine actively refused it.
