@@ -15,11 +15,11 @@ import (
 )
 
 type KafkaSender struct {
-	name  string
-	hosts []string
-	topic []string
-	cfg   *sarama.Config
-
+	name     string
+	hosts    []string
+	topic    []string
+	cfg      *sarama.Config
+	hostInfo bool
 	producer sarama.SyncProducer
 }
 
