@@ -47,7 +47,7 @@ const (
 
 	KeyElasticIndexStrategy = "elastic_index_strategy"
 	KeyElasticTimezone      = "elastic_time_zone"
-	keyElasticTimestamp     = "elastic_timestamp" //指定时间戳字段  1.若为空,则不指定 2.若某条数据不存在该字段,则创建,并以当前时间为value 3.若某条数据存在该字段且无法转换成时间类型,则丢弃该条数据
+	KeyElasticTimestamp     = "elastic_timestamp" //指定时间戳字段  1.若为空,则不指定 2.若某条数据不存在该字段,则创建,并以当前时间为value 3.若某条数据存在该字段且无法转换成时间类型,则丢弃该条数据
 )
 
 const (
@@ -110,7 +110,7 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 	name, _ := conf.GetStringOr(KeyName, fmt.Sprintf("elasticSender:(elasticUrl:%s,index:%s,type:%s)", host, index, eType))
 	fields, _ := conf.GetAliasMapOr(KeyElasticAlias, make(map[string]string))
 	eVersion, _ := conf.GetStringOr(KeyElasticVersion, ElasticVersion3)
-	timestamp, _ := conf.GetString(keyElasticTimestamp)
+	timestamp, _ := conf.GetString(KeyElasticTimestamp)
 
 	strategy := []string{KeyDefaultIndexStrategy, KeyYearIndexStrategy, KeyMonthIndexStrategy, KeyDayIndexStrategy}
 
@@ -207,10 +207,7 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
 			}
-			//添加发送时间
-			if ess.logkitSendTime {
-				doc[KeySendTime] = time.Now().In(ess.timeZone)
-			}
+
 			doc2 := doc
 			bulkService.Add(elasticV6.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
 		}
@@ -240,10 +237,7 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
 			}
-			//添加发送时间
-			if ess.logkitSendTime {
-				doc[KeySendTime] = time.Now().In(ess.timeZone)
-			}
+
 			doc2 := doc
 			bulkService.Add(elasticV5.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
 		}
@@ -273,10 +267,7 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 			if makeDoc {
 				doc = ess.wrapDoc(doc)
 			}
-			//添加发送时间
-			if ess.logkitSendTime {
-				doc[KeySendTime] = time.Now().In(ess.timeZone)
-			}
+
 			doc2 := doc
 			bulkService.Add(elasticV3.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
 		}
@@ -290,6 +281,11 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 }
 
 func processDoc(ess *ElasticsearchSender, doc Data) error {
+	//添加发送时间
+	if ess.logkitSendTime {
+		doc[KeySendTime] = time.Now().In(ess.timeZone)
+	}
+
 	if ess.timestamp != "" {
 		if _, ok := doc[ess.timestamp]; ok {
 			//验证是否为日期字符串
