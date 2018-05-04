@@ -15,7 +15,7 @@ func TestNewPluginRunner(t *testing.T) {
 	plugin.Conf = &plugin.Config{
 		Enabled: true,
 		Dir:     `E:\Go\GOPATH\src\github.com\qiniu\logkit\plugins`,
-		Git:     "",
+		RemoteSource:     "",
 	}
 	err := plugin.SyncPlugins()
 	if err != nil {
@@ -25,7 +25,7 @@ func TestNewPluginRunner(t *testing.T) {
 
 	rc1 := RunnerConfig{
 		PluginConfig: &PluginConfig{
-			Type: "hello1",
+			PluginType: "hello1",
 			Config: map[string]interface{}{
 				"name": "admin",
 				"pass": "123",
@@ -48,7 +48,7 @@ func TestNewPluginRunner(t *testing.T) {
 
 	rc2 := RunnerConfig{
 		PluginConfig: &PluginConfig{
-			Type: "hello2",
+			PluginType: "hello2",
 			Config: map[string]interface{}{
 				"name": "admin",
 				"pass": "123",
@@ -70,7 +70,7 @@ func TestNewPluginRunner(t *testing.T) {
 
 	rc3 := RunnerConfig{
 		PluginConfig: &PluginConfig{
-			Type: "hello3",
+			PluginType: "hello3",
 			Config: map[string]interface{}{
 				"name": "admin",
 				"pass": "123",
@@ -92,7 +92,7 @@ func TestNewPluginRunner(t *testing.T) {
 
 	rc4 := RunnerConfig{
 		PluginConfig: &PluginConfig{
-			Type: "hello4",
+			PluginType: "hello4",
 			Config: map[string]interface{}{
 				"name": "admin",
 				"pass": "123",
@@ -114,7 +114,7 @@ func TestNewPluginRunner(t *testing.T) {
 
 	rc5 := RunnerConfig{
 		PluginConfig: &PluginConfig{
-			Type: "hello5",
+			PluginType: "hello5",
 			Config: map[string]interface{}{
 				"name": "admin",
 				"pass": "123",
@@ -136,7 +136,7 @@ func TestNewPluginRunner(t *testing.T) {
 
 	rc6 := RunnerConfig{
 		PluginConfig: &PluginConfig{
-			Type: "hello6",
+			PluginType: "hello6",
 			Config: map[string]interface{}{
 				"name": "admin",
 				"pass": "123",
