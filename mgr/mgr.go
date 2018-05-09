@@ -396,6 +396,16 @@ func (m *Manager) detectMoreWatchers(confsPath []string) {
 			m.watcherMux.Unlock()
 			log.Debugf("we have totally %v watchers, periodically try to detect more watchers...", watcherNum)
 			m.addWatchers(confsPath)
+
+			t := time.Now()
+			if t.Hour() ==  8 && t.Minute() == 0 && t.Second() < 10 {
+				for _, runner := range m.runners {
+					err := m.ResetRunner(runner.Name())
+					if err != nil {
+						fmt.Println(err)
+					}
+				}
+			}
 		}
 	}
 }

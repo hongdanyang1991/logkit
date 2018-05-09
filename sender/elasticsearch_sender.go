@@ -929,33 +929,67 @@ func processDoc(ess *ElasticsearchSender, doc Data, i int) error {
 			t = time.Now().In(ess.timeZone)
 		}
 	}
-	currentDate := time.Date(t.Year(), t.Month(),t.Day(),0, 0, 0,0, ess.timeZone)
-	duration := currentDate.Sub(ess.startDate)
-	t = t.Add(-duration)
+	now := time.Date(time.Now().Year(), time.Now().Month(),time.Now().Day(),0, 0, 0,0, ess.timeZone)
+	old := time.Date(t.Year(), t.Month(),t.Day(),0, 0, 0,0, ess.timeZone)
+	duration := now.Sub(old)
+	t = t.Add(duration)
     t = t.Add(time.Hour * 24 * (time.Duration)(i * ess.circle))
 	r := rand.New(rand.NewSource(t.UnixNano()))
     weekday := int(t.Weekday())
-	if  weekday == 0 {
-		if r.Intn(3) != 1 {
-			return fmt.Errorf("")
+    if t.Day() % 3 == 1 {
+		if  weekday == 0 {
+			if r.Intn(2) != 1 {
+				return fmt.Errorf("")
+			}
+		} else if weekday == 6 {
+			if r.Intn(3) != 1 {
+				return fmt.Errorf("")
+			}
+		} else if weekday == 1 {
+			if r.Intn(7) == 1 {
+				return fmt.Errorf("")
+			}
+		} else if weekday == 2 {
+			if r.Intn(10) == 1 {
+				return fmt.Errorf("")
+			}
+		} else if weekday == 3 {
+			if r.Intn(5) == 1 {
+				return fmt.Errorf("")
+			}
+		} else if weekday == 4 {
+			if r.Intn(20) == 1 {
+				return fmt.Errorf("")
+			}
+		} else if weekday == 5 {
+			if r.Intn(9) == 1 {
+				return fmt.Errorf("")
+			}
 		}
-	} else if weekday == 6 {
-		if r.Intn(2) != 1 {
-			return fmt.Errorf("")
-		}
-	} else if weekday == 1 {
-		if r.Intn(6) == 1 {
-			return fmt.Errorf("")
-		}
-	} else if weekday == 2 {
-		if r.Intn(10) == 1 {
-			return fmt.Errorf("")
-		}
-	} else if weekday == 5 {
-		if r.Intn(7) == 1 {
-			return fmt.Errorf("")
+	} else {
+		if  weekday == 0 {
+			if r.Intn(3) != 1 {
+				return fmt.Errorf("")
+			}
+		} else if weekday == 6 {
+			if r.Intn(2) != 1 {
+				return fmt.Errorf("")
+			}
+		} else if weekday == 1 {
+			if r.Intn(6) == 1 {
+				return fmt.Errorf("")
+			}
+		} else if weekday == 2 {
+			if r.Intn(10) == 1 {
+				return fmt.Errorf("")
+			}
+		} else if weekday == 5 {
+			if r.Intn(7) == 1 {
+				return fmt.Errorf("")
+			}
 		}
 	}
+
 	rInt := r.Intn(4)
 	if rInt == 0 {
 		if t.Hour() < 12 {
