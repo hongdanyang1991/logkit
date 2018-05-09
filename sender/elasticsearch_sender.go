@@ -48,6 +48,9 @@ type ElasticsearchSender struct {
 	IP             string
 	Percent        int
 	IpMap		   map[int]map[string]bool
+	filterFields   []string
+	//UrlListNum        int
+	replaceRequest  bool
 
 }
 
@@ -71,6 +74,9 @@ const (
 	keyIP                   = "elastic_ip"         //ip字段名
 	keyPercent              = "elastic_percent"    //比率
 	//keyDataSource			= "elastic_data_source"//dataSource字段名
+	keyFilterField          = "elastic_filter_field"//过滤字段
+	keyUrlListNum			= "elastic_url_num"     //选用哪个urlList
+	keyReplaceRequest          = "elastic_replace_request"
 )
 
 const (
@@ -102,6 +108,384 @@ const (
 
 const KeySendTime = "sendTime"
 
+//通用算法
+
+var countList [][]int = [][]int{
+	//通用算法
+	/*{
+		49811,        //53916
+		234672,
+		100593,         //104602
+		107901,         // 111994
+		160765,
+		119232,
+		146103,
+		203222,
+		200632,
+		136206,
+		95645,
+		154428,
+		113913,
+		190735,
+		216357,
+		227873,
+		127048,
+		48100,
+		145086,
+		165390,
+		172836,
+		166962,
+		246928,
+		91020,
+		79318,
+		171818,
+		145363,
+		207477,
+		200771,
+		247437,
+		85081,
+	},*/
+	{
+		49811,        //53916
+		0,
+		100593,         //104602
+		107901,         // 111994
+	},
+	//机理模型
+	/*{
+		29722,        //33819
+		1169207,
+		741757,        //745858
+		588769,			//592861
+		1005450,
+		813762,
+		940385,
+		1147146,
+		1143067,
+		531514,
+		728923,
+		722357,
+		881588,
+		1200322,
+		1123766,
+		1083996,
+		743548,
+		541886,
+		950707,
+		1026293,
+		974509,
+		840947,
+		696316,
+		679204,
+		586208,
+		982120,
+		741434,
+		1209500,
+		1184553,
+		1216539,
+		702093,
+	},*/
+	{
+		29722,        //33819
+		0,
+		741757,        //745858
+		588769,			//592861
+	},
+	//微服务
+	/*{
+		90540,                  //94645
+		953310,
+		768237,               //772311
+		386029,                //390102
+		568045,
+		859966,
+		873726,
+		1063980,
+		924602,
+		827436,
+		399704,
+		515555,
+		891562,
+		1284302,
+		996202,
+		891902,
+		855974,
+		297867,
+		462980,
+		810110,
+		1177623,
+		816480,
+		976327,
+		752099,
+		333454,
+		545707,
+		772993,
+		1249139,
+		1158428,
+		1119613,
+		704906,
+	},*/
+	{
+		90540,                  //94645
+		0,
+		768237,               //772311
+		386029,                //390102
+	},
+}
+
+
+//机理模型/2692/87
+//微服务/2432/85
+//通用算法/475/20
+//-------------------------------------------------------------------------------
+
+
+var urlList = [][]string{
+	//通用算法
+	{
+		"https://platform.cloudiip.com/Inteqral/v1.0/calcRealtimeTask",      //非微服务
+		"https://platform.cloudiip.com/algorithm/v1.0/calcRealtimeTask",      //非微服务
+		"https://platform.cloudiip.com/black/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/car/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/ceshi/v1.0/",
+		"https://platform.cloudiip.com/ceshi/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/color/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/currency/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/electric/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/equipment/v1.0/",
+		"https://platform.cloudiip.com/equipment/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/fe/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/ferrousmetal/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/food/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/hot/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/other/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/petroleum/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/power/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/water/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/yd/v1.0/calcRealtimeTask",
+	},
+	//机理模型
+	{
+		"https://platform.cloudiip.com/Inteqral/v1.0/calcRealtimeTask",      //非微服务
+		"https://platform.cloudiip.com/algorithm/v1.0/calcRealtimeTask",      //非微服务
+		"https://platform.cloudiip.com/black/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/car/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/ceshi/v1.0/",
+		"https://platform.cloudiip.com/ceshi/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/color/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/currency/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/electric/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/equipment/v1.0/",
+		"https://platform.cloudiip.com/equipment/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/fe/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/ferrousmetal/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/food/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/hot/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/other/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/petroleum/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/power/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/water/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/yd/v1.0/calcRealtimeTask",
+
+		"https://platform.cloudiip.com/black/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/car/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/ceshi/v1.0/",
+		"https://platform.cloudiip.com/ceshi/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/color/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/currency/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/electric/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/equipment/v1.0/",
+		"https://platform.cloudiip.com/equipment/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/fe/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/ferrousmetal/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/food/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/hot/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/other/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/petroleum/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/power/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/water/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/yd/v1.0/calcRealtimeTask",
+		//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>通用算法>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+		"https://platform.cloudiip.com/360/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/adjustment/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/agr/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/coalmining/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/flame/v1.0/calcRealtimeTask",
+		//"https://platform.cloudiip.com/sanliu/industrysl/v1.0.0/industrysl",    //非微服务, 非机理模型
+		"https://platform.cloudiip.com/iron/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/metal/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/Nonmetal/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/oil/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/other/v1.0/",
+		"https://platform.cloudiip.com/paper/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/railway/v1.0/eqJurisdiction_do",
+		"https://platform.cloudiip.com/railway/v1.0/findAllotSortList_do",
+		"https://platform.cloudiip.com/railway/v1.0/findAllPersonList_do",
+		"https://platform.cloudiip.com/railway/v1.0/findBomInPlan_do",
+		"https://platform.cloudiip.com/railway/v1.0/findByState_do",
+		"https://platform.cloudiip.com/railway/v1.0/findCaigouQingdan_do",
+		"https://platform.cloudiip.com/railway/v1.0/findCardContentTree_do",
+		"https://platform.cloudiip.com/railway/v1.0/findCheckDetail_do",
+		"https://platform.cloudiip.com/railway/v1.0/findChildDictListByDictId01_do",
+		"https://platform.cloudiip.com/railway/v1.0/findChildDictListByDictId_do",
+		"https://platform.cloudiip.com/railway/v1.0/findConfigExceptionType_do",
+		"https://platform.cloudiip.com/railway/v1.0/findConfigListByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findDataPawerTitle_do",
+		"https://platform.cloudiip.com/railway/v1.0/findDictListByDictCode_do",
+		"https://platform.cloudiip.com/railway/v1.0/findDictListByNotInCondition_do",
+		"https://platform.cloudiip.com/railway/v1.0/findExtyInfo_do",
+		"https://platform.cloudiip.com/railway/v1.0/findGongRenJiaGongKanBan_do",
+		"https://platform.cloudiip.com/railway/v1.0/findGys_do",
+		"https://platform.cloudiip.com/railway/v1.0/findHourCountPerson_do",
+		"https://platform.cloudiip.com/railway/v1.0/findMachineByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findMachineModelByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findMachineStatusList_do",
+		"https://platform.cloudiip.com/railway/v1.0/findMaterialById_do",
+		"https://platform.cloudiip.com/railway/v1.0/findOrgTreeHavePeopleInfo_do",
+		"https://platform.cloudiip.com/railway/v1.0/findOrgTreeNoPeopleInfo2_do",
+		"https://platform.cloudiip.com/railway/v1.0/findOrgTreeNoPeopleInfo_do",
+		"https://platform.cloudiip.com/railway/v1.0/findOrgTreeWithManu_do",
+		"https://platform.cloudiip.com/railway/v1.0/findOutSideChtaSenddeptPatyid_do",
+		"https://platform.cloudiip.com/railway/v1.0/findPartyByType_do",
+		"https://platform.cloudiip.com/railway/v1.0/findPatyByConfig_do",
+		"https://platform.cloudiip.com/railway/v1.0/findPersonalmaintenancetaskstatistics_do",
+		"https://platform.cloudiip.com/railway/v1.0/findProcessstandardsById_do",
+		"https://platform.cloudiip.com/railway/v1.0/findQuestionTypeList_do",
+		"https://platform.cloudiip.com/railway/v1.0/findQuesTypeList_do",
+		"https://platform.cloudiip.com/railway/v1.0/findReceiveIsUsing_do",
+		"https://platform.cloudiip.com/railway/v1.0/findRecursionDictListByDictCode_parentDict_do",
+		"https://platform.cloudiip.com/railway/v1.0/findRoByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findRolePageByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findScopeManufactureunitByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findSparts_do",
+		"https://platform.cloudiip.com/railway/v1.0/findSuppliers_do",
+		"https://platform.cloudiip.com/railway/v1.0/findTaskSortType_do",
+		"https://platform.cloudiip.com/railway/v1.0/findUserLogPageByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findUserOperationPageByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findworkHourClassList_do",
+		"https://platform.cloudiip.com/railway/v1.0/findXianChangProcInfo_do",
+		"https://platform.cloudiip.com/railway/v1.0/getRules_do",
+		"https://platform.cloudiip.com/railway/v1.0/queryBugCount_do",
+		"https://platform.cloudiip.com/railway/v1.0/queryBug_do",
+		"https://platform.cloudiip.com/railway/v1.0/queryQuanXianName_do",
+		"https://platform.cloudiip.com/railway/v1.0/queryRunReport_do",
+		"https://platform.cloudiip.com/railway/v1.0/querySelectedEq_do",
+		"https://platform.cloudiip.com/railway/v1.0/toMtbfMttrMttf_do",
+		"https://platform.cloudiip.com/road/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/supply/v1.0/",
+		"https://platform.cloudiip.com/supply/v1.0/calcRealtimeTask",
+	},
+	//微服务
+	{
+		"https://platform.cloudiip.com/black/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/car/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/ceshi/v1.0/",
+		"https://platform.cloudiip.com/ceshi/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/color/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/currency/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/electric/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/equipment/v1.0/",
+		"https://platform.cloudiip.com/equipment/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/fe/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/ferrousmetal/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/food/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/hot/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/other/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/petroleum/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/power/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/water/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/yd/v1.0/calcRealtimeTask",
+
+		"https://platform.cloudiip.com/black/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/car/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/ceshi/v1.0/",
+		"https://platform.cloudiip.com/ceshi/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/color/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/currency/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/electric/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/equipment/v1.0/",
+		"https://platform.cloudiip.com/equipment/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/fe/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/ferrousmetal/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/food/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/hot/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/other/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/petroleum/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/power/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/water/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/yd/v1.0/calcRealtimeTask",
+		//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>通用算法>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+		"https://platform.cloudiip.com/360/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/adjustment/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/agr/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/coalmining/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/flame/v1.0/calcRealtimeTask",
+		//"https://platform.cloudiip.com/sanliu/industrysl/v1.0.0/industrysl",    //非微服务, 非机理模型
+		"https://platform.cloudiip.com/iron/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/metal/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/Nonmetal/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/oil/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/other/v1.0/",
+		"https://platform.cloudiip.com/paper/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/railway/v1.0/eqJurisdiction_do",
+		"https://platform.cloudiip.com/railway/v1.0/findAllotSortList_do",
+		"https://platform.cloudiip.com/railway/v1.0/findAllPersonList_do",
+		"https://platform.cloudiip.com/railway/v1.0/findBomInPlan_do",
+		"https://platform.cloudiip.com/railway/v1.0/findByState_do",
+		"https://platform.cloudiip.com/railway/v1.0/findCaigouQingdan_do",
+		"https://platform.cloudiip.com/railway/v1.0/findCardContentTree_do",
+		"https://platform.cloudiip.com/railway/v1.0/findCheckDetail_do",
+		"https://platform.cloudiip.com/railway/v1.0/findChildDictListByDictId01_do",
+		"https://platform.cloudiip.com/railway/v1.0/findChildDictListByDictId_do",
+		"https://platform.cloudiip.com/railway/v1.0/findConfigExceptionType_do",
+		"https://platform.cloudiip.com/railway/v1.0/findConfigListByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findDataPawerTitle_do",
+		"https://platform.cloudiip.com/railway/v1.0/findDictListByDictCode_do",
+		"https://platform.cloudiip.com/railway/v1.0/findDictListByNotInCondition_do",
+		"https://platform.cloudiip.com/railway/v1.0/findExtyInfo_do",
+		"https://platform.cloudiip.com/railway/v1.0/findGongRenJiaGongKanBan_do",
+		"https://platform.cloudiip.com/railway/v1.0/findGys_do",
+		"https://platform.cloudiip.com/railway/v1.0/findHourCountPerson_do",
+		"https://platform.cloudiip.com/railway/v1.0/findMachineByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findMachineModelByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findMachineStatusList_do",
+		"https://platform.cloudiip.com/railway/v1.0/findMaterialById_do",
+		"https://platform.cloudiip.com/railway/v1.0/findOrgTreeHavePeopleInfo_do",
+		"https://platform.cloudiip.com/railway/v1.0/findOrgTreeNoPeopleInfo2_do",
+		"https://platform.cloudiip.com/railway/v1.0/findOrgTreeNoPeopleInfo_do",
+		"https://platform.cloudiip.com/railway/v1.0/findOrgTreeWithManu_do",
+		"https://platform.cloudiip.com/railway/v1.0/findOutSideChtaSenddeptPatyid_do",
+		"https://platform.cloudiip.com/railway/v1.0/findPartyByType_do",
+		"https://platform.cloudiip.com/railway/v1.0/findPatyByConfig_do",
+		"https://platform.cloudiip.com/railway/v1.0/findPersonalmaintenancetaskstatistics_do",
+		"https://platform.cloudiip.com/railway/v1.0/findProcessstandardsById_do",
+		"https://platform.cloudiip.com/railway/v1.0/findQuestionTypeList_do",
+		"https://platform.cloudiip.com/railway/v1.0/findQuesTypeList_do",
+		"https://platform.cloudiip.com/railway/v1.0/findReceiveIsUsing_do",
+		"https://platform.cloudiip.com/railway/v1.0/findRecursionDictListByDictCode_parentDict_do",
+		"https://platform.cloudiip.com/railway/v1.0/findRoByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findRolePageByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findScopeManufactureunitByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findSparts_do",
+		"https://platform.cloudiip.com/railway/v1.0/findSuppliers_do",
+		"https://platform.cloudiip.com/railway/v1.0/findTaskSortType_do",
+		"https://platform.cloudiip.com/railway/v1.0/findUserLogPageByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findUserOperationPageByParam_do",
+		"https://platform.cloudiip.com/railway/v1.0/findworkHourClassList_do",
+		"https://platform.cloudiip.com/railway/v1.0/findXianChangProcInfo_do",
+		"https://platform.cloudiip.com/railway/v1.0/getRules_do",
+		"https://platform.cloudiip.com/railway/v1.0/queryBugCount_do",
+		"https://platform.cloudiip.com/railway/v1.0/queryBug_do",
+		"https://platform.cloudiip.com/railway/v1.0/queryQuanXianName_do",
+		"https://platform.cloudiip.com/railway/v1.0/queryRunReport_do",
+		"https://platform.cloudiip.com/railway/v1.0/querySelectedEq_do",
+		"https://platform.cloudiip.com/railway/v1.0/toMtbfMttrMttf_do",
+		"https://platform.cloudiip.com/road/v1.0/calcRealtimeTask",
+		"https://platform.cloudiip.com/supply/v1.0/",
+		"https://platform.cloudiip.com/supply/v1.0/calcRealtimeTask",
+	},
+}
+
 // NewElasticSender New ElasticSender
 func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 
@@ -124,7 +508,11 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 
 	percent, err := conf.GetIntOr(keyPercent, 3)
 
+	//listNum, err := conf.GetIntOr(keyUrlListNum, 1)
+
 	IP, err := conf.GetStringOr(keyIP, "clientip")
+
+	filterFields, err := conf.GetStringList(keyFilterField)
 
 
 
@@ -156,6 +544,7 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 		return
 	}
 	logkitSendTime, _ := conf.GetBoolOr(KeyLogkitSendTime, true)
+	replaceRequest, _ := conf.GetBoolOr(keyReplaceRequest, false)
 	eType, _ := conf.GetStringOr(KeyElasticType, defaultType)
 	name, _ := conf.GetStringOr(KeyName, fmt.Sprintf("elasticSender:(elasticUrl:%s,index:%s,type:%s)", host, index, eType))
 	fields, _ := conf.GetAliasMapOr(KeyElasticAlias, make(map[string]string))
@@ -224,6 +613,9 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 		IP:				 IP,
 		IpMap:      	 IpMap,
 		Percent:         percent,
+		//UrlListNum:      listNum,
+		filterFields:     filterFields,
+		replaceRequest:	  replaceRequest,
 	}, nil
 }
 
@@ -247,7 +639,8 @@ func (ess *ElasticsearchSender) Name() string {
 
 // Send ElasticSearchSender
 func (ess *ElasticsearchSender) Send(data []Data) (err error) {
-
+	//api
+	//ess.repeat = len(countList[ess.UrlListNum])
 	for i := 0; i < ess.repeat; i ++ {
 		dataStr, _ := json.Marshal(data)
 		var data2 = []Data{}
@@ -288,6 +681,7 @@ func (ess *ElasticsearchSender) SendOnce(data []Data, i int) (err error) {
 			}*/
 			doc2 := doc
 			bulkService.Add(elasticV6.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
+
 		}
 
 		_, err = bulkService.Do(context.Background())
@@ -303,6 +697,14 @@ func (ess *ElasticsearchSender) SendOnce(data []Data, i int) (err error) {
 		}
 		var indexName string
 		for _, doc := range data {
+
+			r := rand.New(rand.NewSource(time.Now().UnixNano() + int64(i)))
+			rInt := r.Intn(ess.Percent)
+			if rInt != 1 {
+				continue
+			}
+
+
 			//加工字段
 			if err = processDoc(ess, doc, i); err != nil {
 				continue
@@ -323,7 +725,7 @@ func (ess *ElasticsearchSender) SendOnce(data []Data, i int) (err error) {
 			doc2 := doc
 
 			//随机是否发送
-			if ipStr, ok := doc2[ess.IP].(string); ok {
+			/*if ipStr, ok := doc2[ess.IP].(string); ok {
 				if b, ok := ess.IpMap[i][ipStr]; ok{
 					if !b {
 						continue
@@ -338,7 +740,9 @@ func (ess *ElasticsearchSender) SendOnce(data []Data, i int) (err error) {
 						continue
 					}
 				}
-			}
+			}*/
+
+
 
 			bulkService.Add(elasticV5.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
 		}
@@ -382,6 +786,16 @@ func (ess *ElasticsearchSender) SendOnce(data []Data, i int) (err error) {
 		}
 	}
 	return
+}
+
+
+
+func (ess *ElasticsearchSender) filter(doc Data) bool {
+	for _, field := range ess.filterFields {
+		discardField(field, doc)
+	}
+
+	return false
 }
 
 var ipList = [][]string{
@@ -480,6 +894,17 @@ func mapDataSource(dataSource string, t time.Time) (string, error){
 }
 
 
+func discardField(field string, doc Data){
+	value := doc[field]
+	delete(doc, field)
+	if message, ok := doc[Message].(string); ok {
+		if v, ok := value.(string); ok {
+			msg := strings.Replace(message, "\"" + v + "\"", "", 10)
+			doc[Message] = strings.Replace(msg, v, "", 10)
+		}
+	}
+}
+
 
 func processDoc(ess *ElasticsearchSender, doc Data, i int) error {
 	/*if _, ok := doc[ess.IP]; ok {
@@ -508,6 +933,42 @@ func processDoc(ess *ElasticsearchSender, doc Data, i int) error {
 	duration := currentDate.Sub(ess.startDate)
 	t = t.Add(-duration)
     t = t.Add(time.Hour * 24 * (time.Duration)(i * ess.circle))
+	r := rand.New(rand.NewSource(t.UnixNano()))
+    weekday := int(t.Weekday())
+	if  weekday == 0 {
+		if r.Intn(3) != 1 {
+			return fmt.Errorf("")
+		}
+	} else if weekday == 6 {
+		if r.Intn(2) != 1 {
+			return fmt.Errorf("")
+		}
+	} else if weekday == 1 {
+		if r.Intn(6) == 1 {
+			return fmt.Errorf("")
+		}
+	} else if weekday == 2 {
+		if r.Intn(10) == 1 {
+			return fmt.Errorf("")
+		}
+	} else if weekday == 5 {
+		if r.Intn(7) == 1 {
+			return fmt.Errorf("")
+		}
+	}
+	rInt := r.Intn(4)
+	if rInt == 0 {
+		if t.Hour() < 12 {
+			rInt := r.Intn(6) + i % 3 + 1
+			t.Add(time.Hour * (time.Duration)(rInt))
+		} else {
+			rInt := r.Intn(6) + i % 3 + 1
+			t.Add(-time.Hour * (time.Duration)(rInt))
+		}
+	} else if rInt == 1 {
+			offset := r.Intn(24) - t.Hour()
+            t.Add( time.Hour * (time.Duration)(offset))
+	}
 	doc[ess.timestamp] = t.Format(time.RFC3339Nano)
 	doc[KeySendTime] = t.Add(time.Second * 10)
 	if datasource, ok := doc[DataSource].(string); ok {
@@ -525,9 +986,25 @@ func processDoc(ess *ElasticsearchSender, doc Data, i int) error {
 		}
 
 	}
+	delete(doc, "rawTime")
 
-	//delete(doc, "rawTime")
+	if ess.replaceRequest {
+		if url, ok := doc["request"]; ok {
+			r := rand.New(rand.NewSource(time.Now().UnixNano()))
+			rInt1 := r.Intn(len(urlList))
+			rInt2 := r.Intn(len(urlList[rInt1]))
+			//request := doc["request"]
+			doc["request"] = urlList[rInt1][rInt2]
+			if message, ok := doc[Message].(string); ok {
+				if u, ok := url.(string); ok {
+					doc[Message] = strings.Replace(message, u, urlList[rInt1][rInt2], 10)
+				}
 
+			}
+		}
+	}
+
+	ess.filter(doc)
 	return nil
 }
 

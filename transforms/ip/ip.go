@@ -123,9 +123,9 @@ func (it *IpTransformer) Transform(datas []Data) ([]Data, error) {
 	for i := range datas {
 
 		//工业互联网 内置
-		if _, ok := datas[i][it.Key]; ok {
+		/*if _, ok := datas[i][it.Key]; ok {
 			it.randomIp(datas[i])
-		}
+		}*/
 
 		copy(newkeys, keys)
 		val, gerr := utils.GetMapValue(datas[i], keys...)
