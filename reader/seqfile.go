@@ -477,6 +477,15 @@ func (sf *SeqFile) Lag() (rl *LagInfo, err error) {
 	logReading := filepath.Base(sf.currFile)
 	sf.mux.Unlock()
 
+	inode, err := utilsos.GetIdentifyIDByPath(sf.currFile)
+	if os.IsNotExist(err) || (inode != 0 && inode != sf.inode) {
+		rl.Size = 0
+		err = nil
+	}
+	if err != nil {
+		return
+	}
+
 	logs, err := ReadDirByTime(sf.dir)
 	if err != nil {
 		err = fmt.Errorf("ReadDirByTime err %v, can't get stats", err)
