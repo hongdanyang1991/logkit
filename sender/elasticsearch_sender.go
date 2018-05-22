@@ -240,6 +240,8 @@ func (ess *ElasticsearchSender) Send(data []Data) (err error) {
 
 			doc2 := doc
 			bulkService.Add(elasticV5.NewBulkIndexRequest().Index(indexName).Type(ess.eType).Doc(&doc2))
+			//可以通过此方法设置_id
+			//bulkService.Add(elasticV5.NewBulkIndexRequest().Id("id_" + strconv.FormatInt(time.Now().UnixNano(), 10)).Index(indexName).Type(ess.eType).Doc(&doc2))
 		}
 
 		_, err = bulkService.Do(context.Background())

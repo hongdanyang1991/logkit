@@ -44,6 +44,10 @@ var (
 	confDir = "conf"
 )
 
+const (
+	Timestamp   = "@timestamp"
+)
+
 func ListPlugins() map[string]Plugin {
 	ps := map[string]Plugin{}
 	for k, v := range Plugins {
@@ -190,6 +194,14 @@ func PluginRun(plugin *Plugin, configFile string, logPath string, Cycle int) (me
 	if err != nil {
 		err = fmt.Errorf("json.Unmarshal stdout of %s fail. error:%s stdout: \n%s\n", exePath, err, stdout.String())
 		return nil, err
+	}
+
+	//增加时间戳
+	timestamp := time.Now().Format(time.RFC3339Nano)
+	for _, metric := range metrics {
+		if _, ok := metric[Timestamp]; !ok {
+			metric[Timestamp] = timestamp
+		}
 	}
 	return
 }

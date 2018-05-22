@@ -47,7 +47,7 @@ var (
 		KeyName:       KeyDisableRecordErrData,
 		ChooseOnly:    true,
 		ChooseOptions: []interface{}{"false", "true"},
-		Default:       "false",
+		Default:       "true",
 		DefaultNoUse:  false,
 		Description:   "禁止记录解析失败数据(disable_record_errdata)",
 		Advance:       true,
