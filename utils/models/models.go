@@ -32,11 +32,16 @@ const (
 
 	DefaultDirPerm  = 0755
 	DefaultFilePerm = 0600
+
+	Text     = "text"
+	Checkbox = "checkbox"
+	Radio    = "radio"
 )
 
 type Option struct {
 	KeyName       string
 	ChooseOnly    bool
+	Element       string
 	ChooseOptions []interface{}
 	Default       interface{}
 	DefaultNoUse  bool
