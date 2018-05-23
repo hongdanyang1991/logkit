@@ -178,37 +178,35 @@ class Transformer extends Component {
     this.state.currentItem.map((ele, index) => {
       let formItem = null
       const labelDes = (
-        <span>
+        ele.Description.indexOf('(') !== -1 ? <span>
           {ele.Description.slice(0, ele.Description.indexOf('('))}
           <br />
           <span style={{ color: 'rgba(0,0,0,.43)', float: 'right' }}>
             {ele.Description.slice(ele.Description.indexOf('('), ele.Description.length)}
           </span>
         </span>
+          : <span>{ele.Description}</span>
       )
       if (ele.ChooseOnly == false) {
         if (ele.KeyName == 'name') {
           ele.Default = "pandora.sender." + moment().format("YYYYMMDDHHmmss");
         }
-        if (ele.advance_depend && getFieldValue(`${this.state.currentOption}.${ele.advance_depend}`) === 'false') {
-          formItem = null
-        } else {
-          formItem = (
-            <FormItem key={index}
-              {...formItemLayout}
-              className=""
-              label={labelDes}>
-              {getFieldDecorator(`${this.state.currentOption}.${ele.KeyName}`, {
-                initialValue: ele.Default,
-                rules: [{ required: ele.required, message: '不能为空', trigger: 'blur' },
+        let isAdvanceDependHide = ele.advance_depend && getFieldValue(`${this.state.currentOption}.${ele.advance_depend}`) === 'false'
+        formItem = (
+          <FormItem key={index}
+                    {...formItemLayout}
+                    className={isAdvanceDependHide ? 'hide-div' : 'show-div'}
+                    label={labelDes}>
+            {getFieldDecorator(`${this.state.currentOption}.${ele.KeyName}`, {
+              initialValue: ele.Default,
+              rules: [{ required: ele.required && !isAdvanceDependHide, message: '不能为空', trigger: 'blur' },
                 { pattern: ele.CheckRegex, message: '输入不符合规范' },
-                ]
-              })(ele.Type === 'string' ? (<Input placeholder={ele.DefaultNoUse ? ele.placeholder : '空值可作为默认值'} disabled={this.state.isReadonly} />) :
-                (<InputNumber placeholder={ele.DefaultNoUse ? ele.placeholder : '空值可作为默认值'} disabled={this.state.isReadonly} />)
-                )}
-            </FormItem>
-          )
-        }
+              ]
+            })(ele.Type === 'string' ? (<Input placeholder={ele.DefaultNoUse ? ele.placeholder : '空值可作为默认值'} disabled={this.state.isReadonly} />) :
+              (<InputNumber placeholder={ele.DefaultNoUse ? ele.placeholder : '空值可作为默认值'} disabled={this.state.isReadonly} />)
+            )}
+          </FormItem>
+        )
       } else {
         formItem = (
           <FormItem key={index}
@@ -294,6 +292,11 @@ class Transformer extends Component {
   addTag = () => {
     const {getFieldsValue, getFieldDecorator} = this.props.form;
     let data = getFieldsValue();
+    if (this.state.currentOption === 'script') {
+      if (data && data[this.state.currentOption] && data[this.state.currentOption]['script']) {
+        data[this.state.currentOption]['script'] = window.btoa(encodeURIComponent(data[this.state.currentOption]['script']))
+      }
+    }
     if (this.state.currentOption != '请选择需要转化的类型') {
       this.setState({
         tags: this.state.tags.concat(`uuid${this.schemaUUID}`)

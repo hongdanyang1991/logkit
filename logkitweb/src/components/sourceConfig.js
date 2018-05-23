@@ -3,7 +3,8 @@ import {
   Form,
   Input,
   Select,
-  Checkbox
+  Checkbox,
+  InputNumber
 } from 'antd';
 import config from '../store/config'
 import _ from "lodash";
@@ -34,6 +35,27 @@ const optionFormItemLayout = {
   },
 };
 
+const allowDeleteOption = ['file', 'fileauto', 'dir', 'tailx']
+const cleanerConfig = [{
+  KeyName: 'delete_enable',
+  Default: 'false',
+  Label: '是否自动删除日志文件'
+}, {
+  KeyName: 'delete_interval',
+  Default: '10',
+  Label: '删除执行周期',
+  Unit: '秒'
+}, {
+  KeyName: 'reserve_file_number',
+  Default: '10',
+  Label: '最大保留已读文件数'
+}, {
+  KeyName: 'reserve_file_size',
+  Default: '2048',
+  Label: '最大保留已读文件总大小',
+  Unit: 'MB'
+}]
+
 class Source extends Component {
   constructor(props) {
     super(props);
@@ -43,7 +65,8 @@ class Source extends Component {
       options: [],
       currentOption: '',
       currentItem: [],
-      advanceChecked: false
+      advanceChecked: false,
+      enableDelete: false
     };
 
   }
@@ -64,16 +87,28 @@ class Source extends Component {
   }
 
   submit = () => {
-    const {getFieldsValue} = this.props.form;
-    let data = getFieldsValue();
-    let notEmptyKeys = []
+    const {getFieldsValue} = this.props.form
+    const cleanerKeys = cleanerConfig.map(item => item.KeyName)
+    let data = getFieldsValue()
+    let notEmptyKeysReader = []
+    let notEmptyKeysCleaner = []
+    for (const item of this.state.currentItem) {
+      if (item.advance_depend && data[this.state.currentOption] && data[this.state.currentOption][item.advance_depend] === 'false') {
+        data[this.state.currentOption][item.KeyName] = ''
+      }
+    }
     _.forIn(data[this.state.currentOption], function (value, key) {
       if (value != "") {
-        notEmptyKeys.push(key)
+        cleanerKeys.includes(key) ? notEmptyKeysCleaner.push(key) : notEmptyKeysReader.push(key)
       }
     });
+    let cleanerData = _.pick(data[this.state.currentOption], notEmptyKeysCleaner)
+    if (cleanerData && typeof cleanerData['delete_enable'] === 'boolean') {
+      cleanerData.delete_enable = cleanerData.delete_enable.toString()
+    }
 
-    config.set('reader', _.pick(data[this.state.currentOption], notEmptyKeys))
+    config.set('reader', _.pick(data[this.state.currentOption], notEmptyKeysReader))
+    config.set('cleaner', cleanerData)
   }
 
   init = () => {
@@ -97,7 +132,7 @@ class Source extends Component {
               that.handleChange(window.nodeCopy.reader.mode)
               resetFields();
               let formData = {}
-              formData[window.nodeCopy.reader.mode] = window.nodeCopy.reader
+              formData[window.nodeCopy.reader.mode] = {...window.nodeCopy.reader, ...window.nodeCopy.cleaner}
               that.setState({
                 currentOption: window.nodeCopy.reader.mode
               })
@@ -126,25 +161,24 @@ class Source extends Component {
         </span>
       )
       if (ele.ChooseOnly == false) {
-        if (ele.advance_depend && getFieldValue(`${this.state.currentOption}.${ele.advance_depend}`) === 'false') {
-          formItem = null
-        } else {
-          formItem = (
-            <FormItem key={index}
-              {...formItemLayout}
-              className=""
-              label={labelDes}>
-              {getFieldDecorator(`${this.state.currentOption}.${ele.KeyName}`, {
-                initialValue: ele.Default,
-                rules: [{ required: ele.required, message: '不能为空', trigger: 'blur' },
+        let isAdvanceDependHide = ele.advance_depend && getFieldValue(`${this.state.currentOption}.${ele.advance_depend}`) === 'false'
+        formItem = (
+          <FormItem key={index}
+                    {...formItemLayout}
+                    className={isAdvanceDependHide ? 'hide-div' : 'show-div'}
+                    label={labelDes}>
+            {getFieldDecorator(`${this.state.currentOption}.${ele.KeyName}`, {
+              initialValue: ele.Default,
+              rules: [{ required: ele.required && !isAdvanceDependHide, message: '不能为空', trigger: 'blur' },
                 { pattern: ele.CheckRegex, message: '输入不符合规范' },
-                ]
-              })(
-                <Input placeholder={ele.DefaultNoUse ? ele.placeholder : '空值可作为默认值'} disabled={this.state.isReadonly} />
-                )}
-            </FormItem>
-          )
-        }
+              ]
+            })(
+              ele.Element === 'text'
+                ? <Input.TextArea placeholder={ele.DefaultNoUse ? ele.placeholder : '空值可作为默认值'} disabled={this.state.isReadonly} />
+                : <Input placeholder={ele.DefaultNoUse ? ele.placeholder : '空值可作为默认值'} disabled={this.state.isReadonly} />
+            )}
+          </FormItem>
+        )
       } else {
         formItem = (
           <FormItem key={index}
@@ -222,6 +256,49 @@ class Source extends Component {
         options
     )
   }
+  
+  renderExtraFormItem = () => {
+    const {currentOption} = this.state
+    const {getFieldDecorator, getFieldValue, setFieldsValue} = this.props.form
+    if (allowDeleteOption.includes(currentOption)) {
+      const cleanerChildConfig = cleanerConfig.filter(item => item.KeyName !== 'delete_enable')
+      const enableDelete = getFieldValue(`${this.state.currentOption}.delete_enable`)
+      return (
+        <div>
+          <FormItem
+                    {...formItemLayout}
+                    className="delete_enable"
+                    label={<span>是否自动删除日志文件<br /></span>}>
+            {getFieldDecorator(`${this.state.currentOption}.delete_enable`, {
+              initialValue: false
+            })(
+              <Checkbox checked={!!enableDelete}>自动删除</Checkbox>
+            )}
+          </FormItem>
+          {enableDelete
+            ? (
+              <div>
+                {cleanerChildConfig.map((item) => (
+                  <FormItem
+                    key={item.KeyName}
+                    {...formItemLayout}
+                    className="delete-enable-input-number"
+                    label={<span>{item.Label}<br /></span>}>
+                    {getFieldDecorator(`${this.state.currentOption}.${item.KeyName}`, {
+                      initialValue: item.Default
+                    })(
+                      <Input />
+                    )}
+                    {item.Unit}
+                  </FormItem>
+                ))}
+              </div>
+            )
+          : null}
+        </div>
+      )
+    }
+  }
 
   render() {
     const {getFieldDecorator} = this.props.form
@@ -239,6 +316,7 @@ class Source extends Component {
             </FormItem>
             <div className="ant-divider ant-divider-horizontal"></div>
             {renderResults.result}
+            {this.renderExtraFormItem()}
             {
               renderResults.advancedResults.length > 0
                 ? (
