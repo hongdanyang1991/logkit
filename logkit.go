@@ -56,7 +56,7 @@ var DEFAULT_PORT = "8100"
 var conf Config
 
 const (
-	NextVersion       = "v1.4.8"
+	NextVersion       = "v1.4.9"
 	defaultReserveCnt = 5
 	defaultLogDir     = "./run"
 	defaultLogPattern = "*.log-*"
