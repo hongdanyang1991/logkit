@@ -12,6 +12,7 @@ import (
 
 	"github.com/qiniu/log"
 	"github.com/robertkrimen/otto"
+	"encoding/json"
 )
 
 type Script struct {
@@ -81,7 +82,11 @@ func (g *Script) Transform(datas []Data) (returnData []Data, ferr error) {
 	errnums := 0
 	g.vm = otto.New()
 	g.vm.Interrupt = make(chan func(), 1) // The buffer prevents blocking
-	returnData = DeepCopy(datas).([]Data)
+	//returnData = DeepCopy(datas).([]Data)
+	//备份数据
+	dataStr, _ := json.Marshal(datas)
+	json.Unmarshal(dataStr, &returnData)
+
 	halt := fmt.Errorf("script transformer execution timeout of %v second, the transform script is: %s , the batch size is %v", int(timeOut), g.Script, len(datas))
 	ctx := context.Background()
 	cancelCtx, cancel := context.WithCancel(ctx)
