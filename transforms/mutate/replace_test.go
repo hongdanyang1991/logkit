@@ -55,9 +55,9 @@ func TestReplaceTransformer(t *testing.T) {
 		Regex: true,
 	}
 	gsub4.Init()
-	data4, err4 := gsub4.Transform([]sender.Data{{"multi": map[string]interface{}{"myword": "hello x1 y2 x1nihao", "abc": "x1 y2"}}, {"multi": map[string]interface{}{"myword": "x1x.x.x11", "abc": "x1"}}})
+	data4, err4 := gsub4.Transform([]Data{{"multi": map[string]interface{}{"myword": "hello x1 y2 x1nihao", "abc": "x1 y2"}}, {"multi": map[string]interface{}{"myword": "x1x.x.x11", "abc": "x1"}}})
 	assert.NoError(t, err4)
-	exp4 := []sender.Data{
+	exp4 := []Data{
 		{"multi": map[string]interface{}{"myword": "hello x y xnihao", "abc": "x1 y2"}},
 		{"multi": map[string]interface{}{"myword": "xx.x.x", "abc": "x1"}}}
 	assert.Equal(t, exp4, data4)
