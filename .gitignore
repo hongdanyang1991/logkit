@@ -108,3 +108,4 @@ __pycache__/
 
 .metastore
 data/
+mytestservice/

@@ -11,18 +11,22 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/json-iterator/go"
+
 	"github.com/qiniu/log"
+	"github.com/qiniu/pandora-go-sdk/base/reqerr"
+
 	"github.com/qiniu/logkit/cleaner"
 	"github.com/qiniu/logkit/conf"
 	"github.com/qiniu/logkit/parser"
+	_ "github.com/qiniu/logkit/parser/builtin"
 	"github.com/qiniu/logkit/reader"
+	_ "github.com/qiniu/logkit/reader/builtin"
+	"github.com/qiniu/logkit/reader/cloudtrail"
 	"github.com/qiniu/logkit/router"
 	"github.com/qiniu/logkit/sender"
 	"github.com/qiniu/logkit/transforms"
 	. "github.com/qiniu/logkit/utils/models"
-
-	"github.com/json-iterator/go"
-	"github.com/qiniu/pandora-go-sdk/base/reqerr"
 )
 
 type CleanInfo struct {
@@ -67,7 +71,7 @@ type LogExportRunner struct {
 	exitChan     chan struct{}
 	reader       reader.Reader
 	cleaner      *cleaner.Cleaner
-	parser       parser.LogParser
+	parser       parser.Parser
 	senders      []sender.Sender
 	router       *router.Router
 	transformers []transforms.Transformer
@@ -89,18 +93,18 @@ const qiniulogHeadPatthern = "[1-9]\\d{3}/[0-1]\\d/[0-3]\\d [0-2]\\d:[0-6]\\d:[0
 
 // NewRunner 创建Runner
 func NewRunner(rc RunnerConfig, cleanChan chan<- cleaner.CleanSignal) (runner Runner, err error) {
-	return NewLogExportRunner(rc, cleanChan, reader.NewReaderRegistry(), parser.NewParserRegistry(), sender.NewSenderRegistry())
+	return NewLogExportRunner(rc, cleanChan, reader.NewRegistry(), parser.NewRegistry(), sender.NewSenderRegistry())
 }
 
-func NewCustomRunner(rc RunnerConfig, cleanChan chan<- cleaner.CleanSignal, rr *reader.ReaderRegistry, ps *parser.ParserRegistry, sr *sender.SenderRegistry) (runner Runner, err error) {
+func NewCustomRunner(rc RunnerConfig, cleanChan chan<- cleaner.CleanSignal, rr *reader.Registry, ps *parser.Registry, sr *sender.SenderRegistry) (runner Runner, err error) {
 	if ps == nil {
-		ps = parser.NewParserRegistry()
+		ps = parser.NewRegistry()
 	}
 	if sr == nil {
 		sr = sender.NewSenderRegistry()
 	}
 	if rr == nil {
-		rr = reader.NewReaderRegistry()
+		rr = reader.NewRegistry()
 	}
 	if rc.MetricConfig != nil {
 		return NewMetricRunner(rc, sr)
@@ -110,12 +114,12 @@ func NewCustomRunner(rc RunnerConfig, cleanChan chan<- cleaner.CleanSignal, rr *
 	return NewLogExportRunner(rc, cleanChan, rr, ps, sr)
 }
 
-func NewRunnerWithService(info RunnerInfo, reader reader.Reader, cleaner *cleaner.Cleaner, parser parser.LogParser, transformers []transforms.Transformer,
+func NewRunnerWithService(info RunnerInfo, reader reader.Reader, cleaner *cleaner.Cleaner, parser parser.Parser, transformers []transforms.Transformer,
 	senders []sender.Sender, router *router.Router, meta *reader.Meta) (runner Runner, err error) {
 	return NewLogExportRunnerWithService(info, reader, cleaner, parser, transformers, senders, router, meta)
 }
 
-func NewLogExportRunnerWithService(info RunnerInfo, reader reader.Reader, cleaner *cleaner.Cleaner, parser parser.LogParser,
+func NewLogExportRunnerWithService(info RunnerInfo, reader reader.Reader, cleaner *cleaner.Cleaner, parser parser.Parser,
 	transformers []transforms.Transformer, senders []sender.Sender, router *router.Router, meta *reader.Meta) (runner *LogExportRunner, err error) {
 	if info.MaxBatchSize <= 0 {
 		info.MaxBatchSize = defaultMaxBatchSize
@@ -175,7 +179,7 @@ func NewLogExportRunnerWithService(info RunnerInfo, reader reader.Reader, cleane
 	return runner, nil
 }
 
-func NewLogExportRunner(rc RunnerConfig, cleanChan chan<- cleaner.CleanSignal, rr *reader.ReaderRegistry, ps *parser.ParserRegistry, sr *sender.SenderRegistry) (runner *LogExportRunner, err error) {
+func NewLogExportRunner(rc RunnerConfig, cleanChan chan<- cleaner.CleanSignal, rr *reader.Registry, ps *parser.Registry, sr *sender.SenderRegistry) (runner *LogExportRunner, err error) {
 	runnerInfo := RunnerInfo{
 		EnvTag:           rc.EnvTag,
 		RunnerName:       rc.RunnerName,
@@ -212,8 +216,8 @@ func NewLogExportRunner(rc RunnerConfig, cleanChan chan<- cleaner.CleanSignal, r
 	if mode == reader.ModeCloudTrail {
 		syncDir := rc.ReaderConfig[reader.KeySyncDirectory]
 		if syncDir == "" {
-			bucket, prefix, region, ak, sk, _ := reader.GetS3UserInfo(rc.ReaderConfig)
-			syncDir = reader.GetDefualtSyncDir(bucket, prefix, region, ak, sk, rc.RunnerName)
+			bucket, prefix, region, ak, sk, _ := cloudtrail.GetS3UserInfo(rc.ReaderConfig)
+			syncDir = cloudtrail.GetDefaultSyncDir(bucket, prefix, region, ak, sk, rc.RunnerName)
 		}
 		rc.ReaderConfig[reader.KeyLogPath] = syncDir
 		if len(rc.CleanerConfig) == 0 {

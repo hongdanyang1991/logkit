@@ -13,11 +13,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/qiniu/log"
+
 	"github.com/qiniu/logkit/rateio"
 	. "github.com/qiniu/logkit/utils/models"
 	utilsos "github.com/qiniu/logkit/utils/os"
-
-	"github.com/qiniu/log"
 )
 
 // FileMode 读取单个文件模式
@@ -51,7 +51,7 @@ type SeqFile struct {
 
 	validFilePattern  string // 合法的文件名正则表达式
 	stopped           int32  // 停止标志位
-	skipFileFirstLine bool   //跳过新文件的第一行，常用于带title的csv文件，title与实际格式不同
+	SkipFileFirstLine bool   //跳过新文件的第一行，常用于带title的csv文件，title与实际格式不同
 	hasSkiped         bool
 
 	inodeDone map[string]bool //记录filename_inode是否已经读过
@@ -134,7 +134,7 @@ func NewSeqFile(meta *Meta, path string, ignoreHidden, newFileNewLine bool, suff
 			return nil, err
 		}
 		sf.f = f
-		sf.ratereader = rateio.NewRateReader(f, meta.readlimit)
+		sf.ratereader = rateio.NewRateReader(f, meta.Readlimit)
 		sf.offset = offset
 	} else {
 		sf.inode = 0
@@ -241,7 +241,7 @@ func (sf *SeqFile) reopenForESTALE() error {
 	if sf.ratereader != nil {
 		sf.ratereader.Close()
 	}
-	sf.ratereader = rateio.NewRateReader(f, sf.meta.readlimit)
+	sf.ratereader = rateio.NewRateReader(f, sf.meta.Readlimit)
 	ninode, err := utilsos.GetIdentifyIDByFile(f)
 	if err != nil {
 		//为了不影响程序运行
@@ -259,6 +259,13 @@ type NewLineBytesRecorder interface {
 
 func (sf *SeqFile) NewLineBytesIndex() []SourceIndex {
 	return sf.newLineBytesSourceIndex
+}
+
+func (sf *SeqFile) handleUnexpectErr(err error) {
+	if err == io.ErrUnexpectedEOF || err == os.ErrClosed || err == os.ErrNotExist {
+		sf.f = nil
+		return
+	}
 }
 
 func (sf *SeqFile) Read(p []byte) (n int, err error) {
@@ -308,6 +315,7 @@ func (sf *SeqFile) Read(p []byte) (n int, err error) {
 		n += n1
 		if err != nil {
 			if err != io.EOF {
+				sf.handleUnexpectErr(err)
 				return n, err
 			}
 			fi, err1 := sf.nextFile()
@@ -479,7 +487,7 @@ func (sf *SeqFile) newOpen() (err error) {
 	if sf.ratereader != nil {
 		sf.ratereader.Close()
 	}
-	sf.ratereader = rateio.NewRateReader(f, sf.meta.readlimit)
+	sf.ratereader = rateio.NewRateReader(f, sf.meta.Readlimit)
 	sf.f = f
 	sf.offset = 0
 	sf.inode, err = utilsos.GetIdentifyIDByPath(sf.currFile)
@@ -493,7 +501,9 @@ func (sf *SeqFile) open(fi os.FileInfo) (err error) {
 	if fi == nil {
 		return
 	}
-	err = sf.f.Close()
+	fc := sf.f
+	sf.f = nil
+	err = fc.Close()
 	if err != nil && err != syscall.EINVAL {
 		log.Warnf("Runner[%v] %s - %s f.Close: %v", sf.meta.RunnerName, sf.dir, sf.currFile)
 		return
@@ -514,7 +524,7 @@ func (sf *SeqFile) open(fi os.FileInfo) (err error) {
 	if sf.ratereader != nil {
 		sf.ratereader.Close()
 	}
-	sf.ratereader = rateio.NewRateReader(f, sf.meta.readlimit)
+	sf.ratereader = rateio.NewRateReader(f, sf.meta.Readlimit)
 	sf.offset = 0
 	sf.inode, err = utilsos.GetIdentifyIDByPath(sf.currFile)
 	if err != nil {
@@ -589,7 +599,7 @@ func (sf *SeqFile) Lag() (rl *LagInfo, err error) {
 }
 
 func (sf *SeqFile) IsNewOpen() bool {
-	if sf.skipFileFirstLine {
+	if sf.SkipFileFirstLine {
 		return !sf.hasSkiped
 	}
 	return false
