@@ -9,10 +9,10 @@
 			"revisionTime": "2017-12-30T20:18:58Z"
 		},
 		{
-			"checksumSHA1": "50/2Bv2EHsoyhrd7ddZKIFMIkoo=",
+			"checksumSHA1": "K7wm03LN5CpmnuQPGfSmrx1hNtk=",
 			"path": "github.com/Shopify/sarama",
-			"revision": "c01858abb625b73a3af51d0798e4ad42c8147093",
-			"revisionTime": "2017-05-08T18:36:27Z",
+			"revision": "35324cf48e33d8260e1c7c18854465a904ade249",
+			"revisionTime": "2018-05-30T15:11:20Z",
 			"version": "v1.12.0",
 			"versionExact": "v1.12.0"
 		},
@@ -481,12 +481,6 @@
 			"revisionTime": "2016-11-28T21:05:44Z"
 		},
 		{
-			"checksumSHA1": "/75oK5RVdiy+bYLaLKcysy/NRLc=",
-			"path": "github.com/robertkrimen/otto",
-			"revision": "3b44b4dcb6c00477273595c312908e2412d07da6",
-			"revisionTime": "2017-11-30T10:32:05Z"
-		},
-		{
 			"checksumSHA1": "7aVQHxIZZYAb+Tq0pbGLL8j+4cM=",
 			"path": "github.com/robfig/cron",
 			"revision": "df38d32658d8788cd446ba74db4bb5375c4b0cb3",
@@ -600,6 +594,18 @@
 			"path": "github.com/stretchr/testify/require",
 			"revision": "4d4bfba8f1d1027c4fdbe371823030df51419987",
 			"revisionTime": "2017-01-30T11:31:45Z"
+		},
+		{
+			"checksumSHA1": "NaoYWMJoqvHk9x3vUddGfovHUH8=",
+			"path": "github.com/toolkits/file",
+			"revision": "a5b3c5147e07f934d9f9d00b901a20b2529f1a57",
+			"revisionTime": "2016-03-25T03:37:39Z"
+		},
+		{
+			"checksumSHA1": "nzUrtQjq28FTswQXnHm+N11y3nE=",
+			"path": "github.com/toolkits/sys",
+			"revision": "1f33b217ffafd62561fa8f5b4977dfe3099f47e3",
+			"revisionTime": "2017-06-15T10:30:26Z"
 		},
 		{
 			"checksumSHA1": "kBA6oOPn+zjf0OXDas1vnOhqKU0=",
