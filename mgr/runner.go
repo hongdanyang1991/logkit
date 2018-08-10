@@ -496,6 +496,7 @@ func (r *LogExportRunner) Run() {
 			log.Debugf("Runner[%v] received parsed data length = 0", r.Name())
 			continue
 		}
+
 		//把datasourcetag加到data里，前提是认为[]line变成[]data以后是一一对应的，一旦错位就不加
 
 		if datasourceTag != "" {
@@ -505,6 +506,40 @@ func (r *LogExportRunner) Run() {
 				log.Errorf("Runner[%v] datasourcetag add error, datas %v not match with froms %v", r.Name(), datas, froms)
 			}
 		}
+
+		// 添加message字段，如果已经存在则不添加
+		temps := make([]sender.Data, 0, len(datas))
+		for i, j := 0, 0; i < len(lines); i++ {
+			if se.ErrorIndexIn(i) {
+				continue
+			}
+
+			data := datas[j]
+			j++
+			if nil == data || len(data) < 1 {
+				continue
+			}
+
+			message := data["message"]
+			val, isStr := message.(string)
+			messageDetected := false
+			if isStr {
+				if len(val) > 0 {
+					messageDetected = true
+				}
+			} else {
+				if nil != message {
+					messageDetected = true
+				}
+			}
+
+			if !messageDetected {
+				data["message"] = lines[i]
+			}
+			temps = append(temps, data)
+		}
+		datas = temps
+
 		for i := range r.transformers {
 			if r.transformers[i].Stage() == transforms.StageAfterParser {
 				datas, err = r.transformers[i].Transform(datas)

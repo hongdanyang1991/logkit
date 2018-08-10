@@ -207,12 +207,15 @@ func (gp *GrokParser) Parse(lines []string) ([]sender.Data, error) {
 			se.ErrorDetail = err
 			continue
 		}
-		if len(data) < 1 { //数据不为空的时候发送
-			continue
-		}
-		log.Debugf("D! parse result(%v)", data)
+
 		datas = append(datas, data)
 		se.AddSuccess()
+
+		if len(data) < 1 {
+			log.Debug("D! parse result empty")
+		} else {
+			log.Debugf("D! parse result(%v)", data)
+		}
 	}
 	return datas, se
 }
