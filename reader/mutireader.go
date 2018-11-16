@@ -14,6 +14,7 @@ import (
 
 	"github.com/qiniu/log"
 	"github.com/qiniu/logkit/utils"
+	"runtime"
 )
 
 type MultiReader struct {
@@ -62,6 +63,9 @@ type Result struct {
 
 func NewActiveReader(originPath, realPath, whence string, meta *Meta, msgChan chan<- Result) (ar *ActiveReader, err error) {
 	rpath := strings.Replace(realPath, string(os.PathSeparator), "/", -1)
+	if runtime.GOOS == "windows" {
+		rpath = strings.Replace(rpath, ":", "_", -1)
+	}
 	subMetaPath := filepath.Join(meta.dir, rpath)
 	subMeta, err := NewMeta(subMetaPath, subMetaPath, realPath, ModeFile, defautFileRetention)
 	if err != nil {
