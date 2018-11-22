@@ -4,7 +4,7 @@ package reader
 
 import (
 	"os"
-	"reflect"
+	"strconv"
 )
 
 type StateOS struct {
