@@ -5,6 +5,7 @@ package reader
 import (
 	"os"
 	"strconv"
+	"syscall"
 )
 
 type StateOS struct {
