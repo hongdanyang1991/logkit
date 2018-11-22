@@ -59,7 +59,9 @@ func NewSingleFile(meta *Meta, path, whence string, isFromWeb bool) (sf *SingleF
 			time.Sleep(time.Minute)
 			continue
 		}
-		f, err = os.Open(path)
+
+		f, err = ReadOpen(path)
+
 		if err != nil {
 			if isFromWeb {
 				return sf, fmt.Errorf("runner[%v] %s - open file err:%v", meta.RunnerName, path, err)
@@ -68,21 +70,18 @@ func NewSingleFile(meta *Meta, path, whence string, isFromWeb bool) (sf *SingleF
 			time.Sleep(time.Minute)
 			continue
 		}
+
 		break
 	}
 
 	omitMeta := false
-	metafile, offset, err := meta.ReadOffset()
+	_, offset, err := meta.ReadOffset()
 	if err != nil {
 		if os.IsNotExist(err) {
 			log.Debugf("Runner[%v] %v -meta data is corrupted err:%v, omit meta data", meta.RunnerName, meta.MetaFile(), err)
 		} else {
 			log.Warnf("Runner[%v] %v -meta data is corrupted err:%v, omit meta data", meta.RunnerName, meta.MetaFile(), err)
 		}
-		omitMeta = true
-	}
-	if metafile != originpath {
-		log.Warnf("Runner[%v] %v -meta file <%v> is not current file <%v>， omit meta data", meta.RunnerName, meta.MetaFile(), metafile, originpath)
 		omitMeta = true
 	}
 
@@ -290,27 +289,12 @@ func (sf *SingleFile) Read(p []byte) (n int, err error) {
 	sf.mux.Lock()
 	defer sf.mux.Unlock()
 	n, err = sf.ratereader.Read(p)
-	if err != nil && strings.Contains(err.Error(), "stale NFS file handle") {
-		nerr := sf.reopenForESTALE()
-		if nerr != nil {
-			log.Errorf("Runner[%v] %v meet eror %v reopen error %v", sf.meta.RunnerName, sf.originpath, err, nerr)
-		}
-		return
-	}
 	sf.offset += int64(n)
 	if err == io.EOF {
 		//读到了，如果n大于0，先把EOF抹去，返回
 		if n > 0 {
 			err = nil
-			return
 		}
-		err = sf.Reopen()
-		if err != nil {
-			return
-		}
-		n, err = sf.ratereader.Read(p)
-		sf.offset += int64(n)
-		return
 	}
 	return
 }
@@ -325,5 +309,6 @@ func (sf *SingleFile) SyncMeta() error {
 	log.Debugf("Runner[%v] %v Sync file success: %v", sf.meta.RunnerName, sf.Name(), sf.offset)
 	sf.lastSyncOffset = sf.offset
 	sf.lastSyncPath = sf.originpath
+
 	return sf.meta.WriteOffset(sf.originpath, sf.offset)
 }

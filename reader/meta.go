@@ -63,6 +63,7 @@ type Meta struct {
 	statisticPath     string // 记录 runner 计数信息
 	ftSaveLogPath     string // 记录 ft_sender 日志信息
 	RunnerName        string
+	fileIdentity      FileIdentity
 }
 
 func getValidDir(dir string) (realPath string, err error) {
@@ -80,6 +81,18 @@ func getValidDir(dir string) (realPath string, err error) {
 	if !fi.Mode().IsDir() {
 		err = ErrFileNotDir
 	}
+	return
+}
+func NewActiveReaderMeta(metadir, filedonedir, logpath string, fileId FileIdentity, mode string, donefileRetention int) (m *Meta, err error) {
+	submetaPath := strconv.FormatUint(fileId.Device, 36) + strconv.FormatUint(fileId.Inode, 36)
+	metadir = filepath.Join(metadir, submetaPath)
+	filedonedir = metadir
+	m, err = NewMeta(metadir, filedonedir, logpath, mode, donefileRetention)
+	if err != nil {
+		log.Errorf("new active reader meta (for file %s) failed, err: %v", logpath, err)
+		return
+	}
+	m.fileIdentity = fileId
 	return
 }
 
@@ -111,6 +124,7 @@ func NewMeta(metadir, filedonedir, logpath, mode string, donefileRetention int) 
 		logpath:           logpath,
 		mode:              mode,
 		readlimit:         defaultIOLimit * 1024 * 1024,
+
 	}, nil
 }
 
@@ -149,6 +163,7 @@ func NewMetaWithConf(conf conf.MapConf) (meta *Meta, err error) {
 	donefileRetention, _ := conf.GetIntOr(doneFileRetention, defautFileRetention)
 	readlimit, _ := conf.GetIntOr(KeyReadIOLimit, defaultIOLimit)
 	meta, err = NewMeta(metapath, filedonepath, logPath, mode, donefileRetention)
+
 	if err != nil {
 		log.Warnf("Runner[%v] %s - newMeta failed, err:%v", runnerName, metapath, err)
 		return

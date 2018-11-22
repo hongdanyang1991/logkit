@@ -14,18 +14,17 @@ import (
 
 	"github.com/qiniu/log"
 	"github.com/qiniu/logkit/utils"
-	"runtime"
 )
 
 type MultiReader struct {
 	started     bool
 	status      int32
-	fileReaders map[string]*ActiveReader
+	fileReaders map[FileIdentity]*ActiveReader
 	armapmux    sync.Mutex
 	startmux    sync.Mutex
 	curFile     string
 	headRegexp  *regexp.Regexp
-	cacheMap    map[string]string
+	cacheMap    map[FileIdentity]string
 
 	msgChan chan Result
 
@@ -61,13 +60,8 @@ type Result struct {
 	logpath string
 }
 
-func NewActiveReader(originPath, realPath, whence string, meta *Meta, msgChan chan<- Result) (ar *ActiveReader, err error) {
-	rpath := strings.Replace(realPath, string(os.PathSeparator), "/", -1)
-	if runtime.GOOS == "windows" {
-		rpath = strings.Replace(rpath, ":", "_", -1)
-	}
-	subMetaPath := filepath.Join(meta.dir, rpath)
-	subMeta, err := NewMeta(subMetaPath, subMetaPath, realPath, ModeFile, defautFileRetention)
+func NewActiveReader(originPath, realPath string, fileId FileIdentity, whence string, meta *Meta, msgChan chan<- Result) (ar *ActiveReader, err error) {
+	subMeta, err := NewActiveReaderMeta(meta.dir, meta.dir, realPath, fileId, ModeFile, defautFileRetention)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +198,8 @@ func (ar *ActiveReader) SyncMeta() string {
 }
 
 func (ar *ActiveReader) expired(expireDur time.Duration) bool {
-	fi, err := os.Stat(ar.realpath)
+	// TODO 可以给FileReader接口增加方法，避免此处转义为SingleFile，目前因为只考虑SingleFile，暂时使用下面一行代码
+	fi, err := (ar.br.rd).(*SingleFile).f.Stat()
 	if err != nil {
 		if os.IsNotExist(err) {
 			return true
@@ -248,8 +243,8 @@ func NewMultiReader(meta *Meta, logPathPattern, whence, expireDur, statIntervalD
 		started:        false,
 		startmux:       sync.Mutex{},
 		status:         StatusInit,
-		fileReaders:    make(map[string]*ActiveReader), //armapmux
-		cacheMap:       make(map[string]string),        //armapmux
+		fileReaders:    make(map[FileIdentity]*ActiveReader), //armapmux
+		cacheMap:       make(map[FileIdentity]string),        //armapmux
 		armapmux:       sync.Mutex{},
 		msgChan:        make(chan Result),
 		statsLock:      sync.RWMutex{},
@@ -285,12 +280,12 @@ func (mr *MultiReader) Expire() {
 	if atomic.LoadInt32(&mr.status) == StatusStopped {
 		return
 	}
-	for path, ar := range mr.fileReaders {
+	for fileId, ar := range mr.fileReaders {
 		if ar.expired(mr.expire) {
 			ar.Close()
-			delete(mr.fileReaders, path)
-			delete(mr.cacheMap, path)
-			paths = append(paths, path)
+			delete(mr.fileReaders, fileId)
+			delete(mr.cacheMap, fileId)
+			paths = append(paths, ar.realpath)
 		}
 	}
 	if len(paths) > 0 {
@@ -332,21 +327,22 @@ func (mr *MultiReader) StatLogPath() {
 			continue
 		}
 		mr.armapmux.Lock()
-		_, ok := mr.fileReaders[rp]
+		fileId := GetFileIdentity(fi)
+		_, ok := mr.fileReaders[fileId]
 		mr.armapmux.Unlock()
 		if ok {
 			log.Debugf("Runner[%v] <%v> is collecting, ignore...", mr.meta.RunnerName, rp)
 			continue
 		}
 		mr.armapmux.Lock()
-		cacheline := mr.cacheMap[rp]
+		cacheline := mr.cacheMap[fileId]
 		mr.armapmux.Unlock()
 		//过期的文件不追踪，除非之前追踪的并且有日志没读完
 		if cacheline == "" && fi.ModTime().Add(mr.expire).Before(time.Now()) {
 			log.Debugf("Runner[%v] <%v> is expired, ignore...", mr.meta.RunnerName, mc)
 			continue
 		}
-		ar, err := NewActiveReader(mc, rp, mr.whence, mr.meta, mr.msgChan)
+		ar, err := NewActiveReader(mc, rp, fileId, mr.whence, mr.meta, mr.msgChan)
 		if err != nil {
 			log.Errorf("Runner[%v] NewActiveReader for matches %v error %v, ignore this match...", mr.meta.RunnerName, rp, err)
 			continue
@@ -362,7 +358,7 @@ func (mr *MultiReader) StatLogPath() {
 		newaddsPath = append(newaddsPath, rp)
 		mr.armapmux.Lock()
 		if atomic.LoadInt32(&mr.status) != StatusStopped {
-			mr.fileReaders[rp] = ar
+			mr.fileReaders[fileId] = ar
 		} else {
 			log.Warnf("Runner[%v] %v NewActiveReader but reader was stopped, ignore this...", mr.meta.RunnerName, mc)
 		}
@@ -487,11 +483,16 @@ func (mr *MultiReader) SyncMeta() {
 	for _, ar := range ars {
 		readcache := ar.SyncMeta()
 		mr.armapmux.Lock()
-		mr.cacheMap[ar.realpath] = readcache
+
+		mr.cacheMap[ar.br.meta.fileIdentity] = readcache
 		mr.armapmux.Unlock()
 	}
 	mr.armapmux.Lock()
-	buf, err := json.Marshal(mr.cacheMap)
+	tempMap := make(map[string]string)
+	for fileId, info := range mr.cacheMap {
+		tempMap[fileId.Stringify()] = info
+	}
+	buf, err := json.Marshal(tempMap)
 	mr.armapmux.Unlock()
 	if err != nil {
 		log.Errorf("%v sync meta error %v, cacheMap %v", mr.Name(), err, mr.cacheMap)
