@@ -156,8 +156,17 @@ func (g *Script) Transform(datas []sender.Data) (returnData []sender.Data, ferr 
 				val, _ = value.ToString()
 			} else if value.IsBoolean() {
 				val, _ = value.ToBoolean()
+			} else if value.IsObject() {
+				val, _ = value.Export()
+				var ok bool
+				if val != nil {
+					val, ok = val.(map[string]interface{})
+				}
+				if !ok {
+					err = fmt.Errorf("run script error: returned object is not a JSON Object")
+				}
 			} else {
-				err = fmt.Errorf("run script error: The value obtained only can be number,string or boolean ")
+				err = fmt.Errorf("run script error: The value obtained only can be number,string or boolean, or JSON Object")
 				break
 			}
 			sErr := utils.SetMapValue(datas[i], val, false, keys...)
