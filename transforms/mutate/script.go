@@ -144,6 +144,7 @@ func (g *Script) Transform(datas []sender.Data) (returnData []sender.Data, ferr 
 		}
 		//获取VM环境中的属性值
 		for j, keys := range g.newKeys {
+			var valueIsMap bool
 			value, scriptErr := g.vm.Get(g.newVars[j])
 			if scriptErr != nil {
 				err = fmt.Errorf("can not get script value: %v, :%v", g.newVars[j], scriptErr)
@@ -158,27 +159,31 @@ func (g *Script) Transform(datas []sender.Data) (returnData []sender.Data, ferr 
 				val, _ = value.ToBoolean()
 			} else if value.IsObject() {
 				val, _ = value.Export()
-				var ok bool
 				var mapVal map[string]interface{}
 				if val != nil {
-					mapVal, ok = val.(map[string]interface{})
+					mapVal, valueIsMap = val.(map[string]interface{})
 				}
-				if !ok {
+				if !valueIsMap {
 					err = fmt.Errorf("run script error: returned object is not a JSON Object")
 					break
 				}
-				// 得到的map变为顶层字段
-				for _, v := range mapVal {
-					val = v
+
+				for k,v := range mapVal {
+					setMapErr := utils.SetMapValue(datas[i], v, false, k)
+					if setMapErr != nil {
+						err = fmt.Errorf("error set map [%s, %s]: %v", k, v, setMapErr)
+					}
 				}
 			} else {
 				err = fmt.Errorf("run script error: The value obtained only can be number,string or boolean, or JSON Object")
 				break
 			}
-			sErr := utils.SetMapValue(datas[i], val, false, keys...)
-			if sErr != nil {
-				err = fmt.Errorf("faild to set mapValue error: %v", sErr)
-				break
+			if !valueIsMap {
+				sErr := utils.SetMapValue(datas[i], val, false, keys...)
+				if sErr != nil {
+					err = fmt.Errorf("faild to set mapValue error: %v", sErr)
+					break
+				}
 			}
 		}
 		if err != nil {
