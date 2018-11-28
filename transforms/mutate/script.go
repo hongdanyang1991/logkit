@@ -159,11 +159,17 @@ func (g *Script) Transform(datas []sender.Data) (returnData []sender.Data, ferr 
 			} else if value.IsObject() {
 				val, _ = value.Export()
 				var ok bool
+				var mapVal map[string]interface{}
 				if val != nil {
-					val, ok = val.(map[string]interface{})
+					mapVal, ok = val.(map[string]interface{})
 				}
 				if !ok {
 					err = fmt.Errorf("run script error: returned object is not a JSON Object")
+					break
+				}
+				// 得到的map变为顶层字段
+				for _, v := range mapVal {
+					val = v
 				}
 			} else {
 				err = fmt.Errorf("run script error: The value obtained only can be number,string or boolean, or JSON Object")
