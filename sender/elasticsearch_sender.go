@@ -3,6 +3,7 @@ package sender
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -53,6 +54,12 @@ const (
 	KeyYearIndexStrategy    = "year"
 	KeyMonthIndexStrategy   = "month"
 	KeyDayIndexStrategy     = "day"
+)
+
+const (
+	KeyAuthUsername = "auth_username"
+	KeyAuthPassword = "auth_password"
+	KeyEnableGzip = "enable_gzip"
 )
 
 var (
@@ -111,31 +118,65 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 		return nil, err
 	}
 
+	authUsername, _ := conf.GetStringOr(KeyAuthUsername, "")
+	authPassword, _ :=conf.GetPasswordEnvStringOr(KeyAuthPassword, "")
+	enableGzip, _ := conf.GetBoolOr(KeyEnableGzip, false)
+
 	// 初始化 client
 	var elasticV3Client *elasticV3.Client
 	var elasticV5Client *elasticV5.Client
 	var elasticV6Client *elasticV6.Client
 	switch eVersion {
 	case ElasticVersion6:
-		elasticV6Client, err = elasticV6.NewClient(
+		optFns := []elasticV6.ClientOptionFunc{
 			elasticV6.SetSniff(false),
 			elasticV6.SetHealthcheck(false),
-			elasticV6.SetURL(host...))
-		if err != nil {
-			return
+			elasticV6.SetURL(host...),
 		}
-	case ElasticVersion5:
-		elasticV5Client, err = elasticV5.NewClient(
-			elasticV5.SetSniff(false),
-			elasticV5.SetHealthcheck(false),
-			elasticV5.SetURL(host...))
+
+		if len(authUsername) > 0 && len(authPassword) > 0 {
+			optFns = append(optFns, elasticV6.SetBasicAuth(authUsername, authPassword))
+		}
+
+		elasticV6Client, err = elasticV6.NewClient(optFns...)
 		if err != nil {
-			return
+			return nil, err
+		}
+	case ElasticVersion3:
+		optFns := []elasticV3.ClientOptionFunc{
+			elasticV3.SetSniff(false),
+			elasticV3.SetHealthcheck(false),
+			elasticV3.SetURL(host...),
+			elasticV3.SetGzip(enableGzip),
+		}
+
+		if len(authUsername) > 0 && len(authPassword) > 0 {
+			optFns = append(optFns, elasticV3.SetBasicAuth(authUsername, authPassword))
+		}
+
+		elasticV3Client, err = elasticV3.NewClient(optFns...)
+		if err != nil {
+			return nil, err
 		}
 	default:
-		elasticV3Client, err = elasticV3.NewClient(elasticV3.SetURL(host...))
+		httpClient := &http.Client{
+			Timeout: 300 * time.Second,
+		}
+		optFns := []elasticV5.ClientOptionFunc{
+			elasticV5.SetSniff(false),
+			elasticV5.SetHealthcheck(false),
+			elasticV5.SetURL(host...),
+			elasticV5.SetGzip(enableGzip),
+			elasticV5.SetHttpClient(httpClient),
+		}
+
+		if len(authUsername) > 0 && len(authPassword) > 0 {
+			optFns = append(optFns, elasticV5.SetBasicAuth(authUsername, authPassword))
+		}
+
+		elasticV5Client, err = elasticV5.NewClient(optFns...)
 		if err != nil {
-			return
+			return nil, err
 		}
 	}
 

@@ -1,7 +1,9 @@
 package conf
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -206,4 +208,44 @@ func (conf MapConf) GetAliasMap(key string) (map[string]string, error) {
 		return make(map[string]string), ErrConfKeyType(key, AliasMapType)
 	}
 	return newV, nil
+}
+
+func IsEnv(env string) (string, bool) {
+	env = strings.TrimSpace(env)
+	if strings.HasPrefix(env, "${") && strings.HasSuffix(env, "}") {
+		envName := strings.Trim(strings.Trim(strings.Trim(env, "$"), "{"), "}")
+		return strings.TrimSpace(envName), true
+	}
+	return "", false
+}
+
+func GetEnvValue(envName string) (string, error) {
+	envName = strings.TrimSpace(envName)
+	if envName == "" {
+		return "", errors.New("environment name is empty")
+	}
+	if osEnv := os.Getenv(envName); osEnv != "" {
+		return osEnv, nil
+	} else {
+		return "", fmt.Errorf("value of environment %s is empty", envName)
+	}
+}
+
+func (conf MapConf) GetPasswordEnvStringOr(key, deft string) (string, error) {
+	value, err := conf.GetString(key)
+	if err != nil {
+		value = deft
+		err = nil
+	}
+
+	envName, isEnv := IsEnv(value)
+	if isEnv {
+		valueFromEnv, err := GetEnvValue(envName)
+		if err != nil {
+			return "", err
+		}
+		return valueFromEnv, nil
+	}
+
+	return value, nil
 }
