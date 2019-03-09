@@ -13,7 +13,7 @@ import (
 	elasticV5 "gopkg.in/olivere/elastic.v5"
 
 	"github.com/qiniu/log"
-	"github.com/qiniu/logkit/conf"
+	config "github.com/qiniu/logkit/conf"
 	"github.com/qiniu/logkit/times"
 	"os"
 )
@@ -82,7 +82,7 @@ const KeySendTime = "sendTime"
 const KeyTimestamp = "@timestamp"
 
 // NewElasticSender New ElasticSender
-func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
+func NewElasticSender(conf config.MapConf) (sender Sender, err error) {
 	host, err := conf.GetStringList(KeyElasticHost)
 	if err != nil {
 		return
@@ -118,8 +118,8 @@ func NewElasticSender(conf conf.MapConf) (sender Sender, err error) {
 		return nil, err
 	}
 
-	authUsername, _ := conf.GetStringOr(KeyAuthUsername, "")
-	authPassword, _ :=conf.GetPasswordEnvStringOr(KeyAuthPassword, "")
+	authUsername, _ := conf.GetStringOr(KeyAuthUsername, config.BLOGIC_ES_AUTH_NAME)
+	authPassword, _ :=conf.GetPasswordEnvStringOr(KeyAuthPassword, config.BLOGIC_ES_AUTH_PASSWORD)
 	enableGzip, _ := conf.GetBoolOr(KeyEnableGzip, false)
 
 	// 初始化 client

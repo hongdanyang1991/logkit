@@ -44,6 +44,8 @@ type Config struct {
 	TimeLayouts      []string `json:"timeformat_layouts"`
 	CleanSelfLogCnt  int      `json:"clean_self_cnt"`
 	StaticRootPath   string   `json:"static_root_path"`
+	BlogicESAuthName string   `json:"blogic_es_auth_name"`
+	BlogicESAuthPassword string  `json:"blogic_es_auth_password"`
 	mgr.ManagerConfig
 }
 
@@ -298,6 +300,14 @@ func main() {
 
 	if err := config.LoadEx(&conf, *confName); err != nil {
 		log.Fatal("config.Load failed:", err)
+	}
+
+	// Get Blogic ES basic auth info from main config file or env vars
+	config.BLOGIC_ES_AUTH_NAME = conf.BlogicESAuthName
+	config.BLOGIC_ES_AUTH_PASSWORD = conf.BlogicESAuthPassword
+	envName, isEnv := config.IsEnv(config.BLOGIC_ES_AUTH_PASSWORD)
+	if isEnv {
+		config.BLOGIC_ES_AUTH_PASSWORD, _ = config.GetEnvValue(envName)
 	}
 
 	if conf.TimeLayouts != nil {
